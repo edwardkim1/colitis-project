@@ -5,6 +5,8 @@
 ##
 ## edward_kim@college.harvard.edu - Jun. 26, 2020
 ############################################################
+require(Seurat)
+
 
 filter_stats <- function(seurat.object, save = FALSE, filename = "") {
 	#thresholding number of unique features
