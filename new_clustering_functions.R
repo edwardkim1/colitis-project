@@ -247,7 +247,7 @@ label_singleR <- function(seurat.object, save.diagnostics=F, save.name=NULL) {
 
 	# ref <- MonacoImmuneData()
 	# pred.Monaco <- SingleR(method="cluster",
-	# 	test=s[['RNA']]@data,
+	# 	test=seurat.object[['RNA']]@data,
 	# 	clusters= seurat.object$seurat_clusters, 
 	# 	ref=ref, 
 	# 	labels=ref$label.fine, 
@@ -262,10 +262,6 @@ label_singleR <- function(seurat.object, save.diagnostics=F, save.name=NULL) {
 	return(seurat.object)
 }
 
-add_labels() <- function(seurat.object, labels) {
-
-
-}
 
 
 save_UMAP_figures <- function(seurat.object) {
