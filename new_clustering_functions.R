@@ -201,7 +201,7 @@ environment(VariableFeaturePlot.Tcells.SCT) <- environment(ElbowPlot)
 
 cluster_umap <- function(seurat.object, npc, k.param, resolution, min.dist) {
 	require(future)
-	plan("multicore")
+	plan("multicore", workers = 10)
 	seurat.object <- FindNeighbors(seurat.object, dims = 1:npc, k.param = k.param) %>% FindClusters(resolution = resolution, graph.name ="RNA_snn") %>% RunUMAP(min.dist = min.dist, graph="RNA_snn")
 	return(seurat.object)
 }
@@ -262,6 +262,17 @@ label_singleR <- function(seurat.object, save.diagnostics=F, save.name=NULL) {
 	return(seurat.object)
 }
 
+#add_labels() <- function(seurat.object, labels) {
+
+
+#}
+
+add_inflamed_id <- function(seurat.object) {
+	inflammed <-c("_1$","_3$","_6$","_7$","_10$","_12$","_14$","_16$","_18$")
+	toMatch <- paste(inflammed,collapse="|")
+	seurat.object$status <- ifelse(grepl(colnames(seurat.object), pattern=toMatch),"CD_inflamed","CD_non-inflamed")
+	seurat.object
+}
 
 
 save_UMAP_figures <- function(seurat.object) {
