@@ -294,6 +294,28 @@ save_UMAP_figures <- function(seurat.object) {
 }
 
 
+test_match_order <- function(x,y) {
+	if(isTRUE(all.equal(x,y))) print('Perfect match in same order')
+	if(!isTRUE(all.equal(x,y)) && isTRUE(all.equal(sort(x),sort(y)))) print('Perfect match in wrong order')
+	if(!isTRUE(all.equal(x,y)) && !isTRUE(all.equal(sort(x),sort(y)))) print('No match')
+}
 
+DE_heatmap <- function(seurat.object, filename, n.cores=10) {
+	require(Seurat)
+	require(future)
+	plan(multicore, workers= n.cores)
+	s_regress.markers <- FindAllMarkers(seurat.object, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, verbose=F)
+	top5 <- s_regress.markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
+	# change spaces in cluster names to underscores
+	orig.levels <- levels(seurat.object)
+	Idents(seurat.object) <- gsub(pattern = " ", replacement = "_", x = Idents(seurat.object))
+	orig.levels <- gsub(pattern = " ", replacement = "_", x = orig.levels)
+	levels(seurat.object) <- orig.levels
+	# store cluster averages in a Seurat object
+	cluster.averages <- AverageExpression(seurat.object, return.seurat = TRUE)
+	# visualize
+	p <- DoHeatmap(cluster.averages,features = top5$gene, size = 3, draw.lines = FALSE, raster=F)
+	ggsave(filename)
+}
 
 
