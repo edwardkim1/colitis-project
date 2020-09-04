@@ -318,4 +318,26 @@ DE_heatmap <- function(seurat.object, filename, n.cores=10) {
 	ggsave(filename)
 }
 
-
+DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), title) {
+	require(edgeR)
+	abundances <- table(x$seurat_clusters, x$sample.id) %>% unclass()
+	extra.info <- x@meta.data[match(colnames(abundances),x$sample.id),]
+	y.ab <- DGEList(abundances,samples=extra.info)
+	# filter just for procedural reasons; no clusters should actually be removed
+	keep <- filterByExpr(y.ab, group=y.ab$samples$colitis2) 
+	y.ab <- y.ab[keep,]
+	# incorporate design matrix
+	design <- des(y.ab$samples)
+	y.ab <- estimateDisp(y.ab, design, trend="none")
+	fit.ab <- glmQLFit(y.ab, design, robust=TRUE, abundance.trend=FALSE)
+	res <- glmQLFTest(fit.ab, coef=ncol(design))
+	# figures
+	pdf(paste("figures/",title,"_BVC.pdf",sep=""))
+	plotBCV(y.ab, cex=1)
+	dev.off()
+	pdf(paste("figures/",title, "_QLDisp.pdf",sep=""))
+	plotQLDisp(fit.ab, cex=1)
+	dev.off()
+	# output
+	return(list(y.ab = y.ab, fit.ab = fit.ab,res = res))
+}
