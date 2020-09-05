@@ -324,8 +324,8 @@ DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), 
 	extra.info <- x@meta.data[match(colnames(abundances),x$sample.id),]
 	y.ab <- DGEList(abundances,samples=extra.info)
 	# filter just for procedural reasons; no clusters should actually be removed
-	keep <- filterByExpr(y.ab, group=y.ab$samples$colitis2) 
-	y.ab <- y.ab[keep,]
+	#keep <- filterByExpr(y.ab, group=y.ab$samples$colitis2) 
+	#y.ab <- y.ab[keep,]
 	# incorporate design matrix
 	design <- des(y.ab$samples)
 	y.ab <- estimateDisp(y.ab, design, trend="none")
