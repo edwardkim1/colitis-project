@@ -7,6 +7,57 @@
 ############################################################
 require(Seurat)
 
+filter_stats_CD <- function(seurat.object, e.out, save = FALSE, filename = "") {
+	## removing emptydroplets
+	is.cell <- e.out$FDR <= 0.01
+	is.cell <- ifelse(is.na(is.cell),F,is.cell)
+	seurat.object <- seurat.object[,is.cell]
+	# thresholding on natural log of number of unique features
+	lnf <- log(seurat.object$nFeature_RNA)
+	lnf.p = pnorm(lnf, mean = median(lnf), sd = mad(lnf), lower.tail = TRUE)
+	lnf.lim = max(lnf[which(p.adjust(lnf.p, method = "fdr") < 1e-2)])
+	#thresholding by mitochondrial fraction
+	mt.fraction <- seurat.object$percent.mt
+	mt.p = pnorm(mt.fraction, mean = median(mt.fraction), sd = mad(mt.fraction), lower.tail = FALSE)
+	mt.lim = min(mt.fraction[which(p.adjust(mt.p, method = "fdr") < 1e-2)])
+	# output
+	filter.stats = list(is.cell = is.cell, mt.pre = mt.fraction, mt.post = mt.fraction[which(mt.fraction < mt.lim)], lnf.pre = lnf, lnf.post = lnf[which(lnf > lnf.lim)], cells.to.remove= !(lnf > lnf.lim & mt.fraction < mt.lim), mt.remove = sum(!(mt.fraction < mt.lim)) , mt.median = median(mt.fraction), mt.mad =mad(mt.fraction), mt.lim = mt.lim, lnf.remove = sum(!(lnf > lnf.lim)) , lnf.median = median(lnf), lnf.mad =mad(lnf), lnf.lim = lnf.lim, cells.to.remove.count = sum(!(lnf > lnf.lim & mt.fraction < mt.lim)))
+	if(save==TRUE) {
+		saveRDS(filter.stats, filename)
+	}
+
+	return(filter.stats)
+}
+
+qc_CD <- function(dirname) {
+	temp <- Read10X(data.dir = paste("data/CD_martin/",dirname,sep=""))
+	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
+	e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
+	stats <- filter_stats_CD(s, e.out= e.out, save=T, filename=paste("saved_objects/CD_martin_qc_092120/", dirname, "_filterstats.RDS", sep=""))
+	# save object 1: the cells that are removed
+	s1 <- s[,stats$cells.to.remove==T | stats$is.cell==F]
+	saveRDS(s1,paste("saved_objects/CD_martin_qc_092120/", dirname, "_1star.RDS", sep=""))
+	# remove empty drops
+	s <- s[,stats$is.cell]
+	# remove low quality cells
+	s$cells.to.remove <- stats$cells.to.remove
+	s <- s[,!s$cells.to.remove]
+	s <- NormalizeData(s, normalization.method = "LogNormalize", scale.factor = 10000) %>% FindVariableFeatures(selection.method = "vst", nfeatures = 2000)## Highly variable genes
+	hvf <- VariableFeatures(s)
+	'%ni%' = Negate('%in%')
+	all.genes <- rownames(s)
+	trvgenes <- all.genes[grepl(x=all.genes, pattern = "^TRAV|^TRBV|^TRGV|^TRDV")]
+	igvgenes <- all.genes[grepl(x=all.genes, pattern = "^IG.V")]
+	VariableFeatures(s) <- hvf[hvf %ni% c(trvgenes,igvgenes)]
+	# Do the rest
+	nPCs <- 20
+	s <- ScaleData(s, features = all.genes, vars.to.regress="percent.mt") %>% RunPCA(features=VariableFeatures(s)) %>% RunUMAP(dims = 1:nPCs) %>% FindNeighbors(dims = 1:nPCs) %>% FindClusters(resolution = 0.5)
+	s <- label_doublets(s,nPCs=nPCs, save.pK.figure=T, filename= paste("figures/CD_martin_092120/" ,dirname,"_pK_ggplot.pdf", sep=""))
+	s1 <- subset(s, subset = DF_hi.lo == "Doublet_hi")
+	saveRDS(s1,paste("saved_objects/CD_martin_qc_092120/", dirname, "_2star.RDS", sep=""))
+	s <- subset(s, subset = DF_hi.lo != "Doublet_hi")
+	saveRDS(s,paste("saved_objects/CD_martin_qc_092120/", dirname, "_3.RDS", sep=""))
+}
 
 filter_stats <- function(seurat.object, save = FALSE, filename = "") {
 	#thresholding number of unique features
