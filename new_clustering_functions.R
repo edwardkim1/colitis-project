@@ -2,8 +2,33 @@
 ## Updated Clustering Functions
 ##
 ## filter_stats # has to be done before scaling/normalizing
+## filter_by_libsize # has to be done before scaling/normalizing
+## filter_by_numfeats # has to be done before scaling/normalizing
+## filter_by_mito# has to be done before scaling/normalizing
+## find.pK.noPlot # 
+## label_doublets # 
+## cluster_umap #
 ##
-## edward_kim@college.harvard.edu - Jun. 26, 2020
+## process_martin #
+## add_inflamed_id #
+## process_ssuo_Tcells #
+## label_singleR #
+##
+## VariableFeaturePlot.Tcells # 
+## VariableFeaturePlot.Tcells.SCT # 
+## save_UMAP_figures #
+##
+## test_match_order #
+## DE_heatmap
+## DA_analysis
+##
+## filter_stats_CD # has to be done before scaling/normalizing
+## qc_CD # 
+## merge_CD # 
+## save_figures_CD # 
+## get_info_CD #
+##
+## edward_kim@college.harvard.edu - last edit: Oct. 7, 2020
 ############################################################
 require(Seurat)
 
@@ -168,8 +193,6 @@ filter_stats <- function(seurat.object, save = FALSE, filename = "") {
 
 	return(filter.stats)
 }
-# filtered.object <- seurat.object[,which(lnf > lnf.lim & mt.fraction < mt.lim)]
-# 
 
 filter_by_libsize <- function(seurat.object, save = FALSE, filename = "") {
 	lib.sizes = Matrix::colSums(seurat.object)
