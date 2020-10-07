@@ -39,7 +39,8 @@ qc_CD <- function(dirname) {
 	# remove low quality cells
 	s$cells.to.remove <- stats$cells.to.remove
 	s <- s[,!s$cells.to.remove]
-	s <- NormalizeData(s, normalization.method = "LogNormalize", scale.factor = 10000) %>% FindVariableFeatures(selection.method = "vst", nfeatures = 2000)## Highly variable genes
+	s <- NormalizeData(s, normalization.method = "LogNormalize", scale.factor = 10000) %>% FindVariableFeatures(selection.method = "vst", nfeatures = 2000)
+	## Highly variable genes
 	hvf <- VariableFeatures(s)
 	'%ni%' = Negate('%in%')
 	all.genes <- rownames(s)
@@ -59,7 +60,13 @@ qc_CD <- function(dirname) {
 merge_CD <- function(s.object1,s.object2) {
 	s <- merge(s.object1, s.object2)
 	# extract and store Variable Features
-	VariableFeatures(s) <- VariableFeatures(s.object1)
+	s <- FindVariableFeatures(s,selection.method = "vst", nfeatures = 2000)
+	hvf <- VariableFeatures(s)
+	'%ni%' = Negate('%in%')
+	all.genes <- rownames(s)
+	trvgenes <- all.genes[grepl(x=all.genes, pattern = "^TRAV|^TRBV|^TRGV|^TRDV")]
+	igvgenes <- all.genes[grepl(x=all.genes, pattern = "^IG.V")]
+	VariableFeatures(s) <- hvf[hvf %ni% c(trvgenes,igvgenes)]
 	# extract and store PCA
 	temp <- Embeddings(s.object1, reduction="pca")
 	temp2 <- Embeddings(s.object2, reduction="pca")
@@ -105,7 +112,7 @@ save_figures_CD <- function(dirname) {
 	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted")
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
 	# Variable Features Save & Figure
-	s4 <- merge(s2, s3)
+	s4 <- merge_CD(s2, s3)
 	VariableFeatures(s4)%>%saveRDS(paste("saved_objects/CD_martin_092120/",dirname,"_hvf.RDS", sep=""))
 	p <- VariableFeaturePlot.Tcells(s4) %>% LabelPoints(points=head(VariableFeatures(s4),10), repel= TRUE)
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_VariableFeatures.pdf", sep=""))
