@@ -34,9 +34,6 @@ qc_CD <- function(dirname) {
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
 	stats <- filter_stats_CD(s, e.out= e.out, save=T, filename=paste("saved_objects/CD_martin_qc_092120/", dirname, "_filterstats.RDS", sep=""))
-	# save object 1: the cells that are removed
-	s1 <- s[,stats$cells.to.remove==T | stats$is.cell==F]
-	saveRDS(s1,paste("saved_objects/CD_martin_qc_092120/", dirname, "_1star.RDS", sep=""))
 	# remove empty drops
 	s <- s[,stats$is.cell]
 	# remove low quality cells
@@ -59,10 +56,28 @@ qc_CD <- function(dirname) {
 	saveRDS(s,paste("saved_objects/CD_martin_qc_092120/", dirname, "_3.RDS", sep=""))
 }
 
+merge_CD <- function(s.object1,s.object2) {
+	s <- merge(s.object1, s.object2)
+	# extract and store Variable Features
+	VariableFeatures(s) <- VariableFeatures(s.object1)
+	# extract and store PCA
+	temp <- Embeddings(s.object1, reduction="pca")
+	temp2 <- Embeddings(s.object2, reduction="pca")
+	s[["pca"]]<- CreateDimReducObject(embeddings = rbind(temp,temp2), key = "PC_", assay = DefaultAssay(s.object1))	
+	# extract and store UMAP
+	temp <- Embeddings(s.object1, reduction="umap")
+	temp2 <- Embeddings(s.object2, reduction="umap")
+	s[["umap"]]<- CreateDimReducObject(embeddings = rbind(temp,temp2), key = "UMAP_", assay = DefaultAssay(s.object1))
+	return(s)
+}
+
 save_figures_CD <- function(dirname) {
 	## import relevant objects
+	temp <- Read10X(data.dir = paste("data/CD_martin/",dirname,sep=""))
+	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- readRDS(paste("saved_objects/CD_martin_qc_092120/", dirname, "_filterstats.RDS", sep=""))
-	s1 <- readRDS(paste("saved_objects/CD_martin_qc_092120/", dirname, "_1star.RDS", sep=""))
+	s1 <- s[,stats$is.cell]
+	s1$cells.to.remove <- stats$cells.to.remove
 	s2 <- readRDS(paste("saved_objects/CD_martin_qc_092120/", dirname, "_2star.RDS", sep=""))
 	s3 <- readRDS(paste("saved_objects/CD_martin_qc_092120/", dirname, "_3.RDS", sep=""))
 	# Mito% Pre/Post Violin Plot
@@ -73,7 +88,7 @@ save_figures_CD <- function(dirname) {
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_LNFviolin.pdf", sep=""))
 
 	# Log.no.features vs. mito% Figure
-	p <- merge(s1,c(s2,s3)) %>% FeatureScatter(feature1="nFeature_RNA", feature2="percent.mt", group.by="cells.to.remove")
+	p <- s1 %>% FeatureScatter(feature1="nFeature_RNA", feature2="percent.mt", group.by="cells.to.remove")
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_LNFxMITO.pdf", sep=""))
 
 	# Mito% Model Fitting Figure
@@ -91,7 +106,7 @@ save_figures_CD <- function(dirname) {
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
 	# Variable Features Save & Figure
 	s4 <- merge(s2, s3)
-	VariableFeatures(s4)%>%saveRDS(paste("figures/CD_martin_092120/",dirname,"_hvf.RDS", sep=""))
+	VariableFeatures(s4)%>%saveRDS(paste("saved_objects/CD_martin_092120/",dirname,"_hvf.RDS", sep=""))
 	p <- VariableFeaturePlot.Tcells(s4) %>% LabelPoints(points=head(VariableFeatures(s4),10), repel= TRUE)
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_VariableFeatures.pdf", sep=""))
 	# PCA Elbow Plot Figure
