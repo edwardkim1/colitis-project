@@ -25,7 +25,7 @@ filter_stats_CD <- function(seurat.object, e.out, save = FALSE, filename = "") {
 	lnf.lim1 = max(lnf[which(p.adjust(lnf.p, method = "fdr") < 1e-2)])
 	lnf.lim = max(log(200),lnf.lim1)
 	# output
-	filter.stats = list(is.cell = is.cell, mt.pre = mt.fraction, mt.post = mt.fraction[which(mt.fraction < mt.lim)], lnf.pre = lnf, lnf.post = lnf[which(lnf > lnf.lim)], cells.to.remove= !(lnf > lnf.lim & mt.fraction < mt.lim), mt.remove = sum(!(mt.fraction < mt.lim)) , mt.median = median(mt.fraction), mt.mad =mad(mt.fraction), mt.lim = mt.lim, lnf.remove = sum(!(lnf > lnf.lim)) , lnf.median = median(lnf), lnf.mad =mad(lnf), lnf.lim = lnf.lim, cells.to.remove.count = sum(!(lnf > lnf.lim & mt.fraction < mt.lim)))
+	filter.stats = list(is.cell = is.cell, mt.pre = mt.fraction, mt.post = mt.fraction[which(mt.fraction < mt.lim)], lnf.pre = lnf, lnf.post = lnf[which(lnf > lnf.lim)], cells.to.remove= !(log(seurat.object$nFeature_RNA) > lnf.lim & mt.fraction < mt.lim), mt.remove = sum(!(mt.fraction < mt.lim)) , mt.median = median(mt.fraction), mt.mad =mad(mt.fraction), mt.lim = mt.lim, lnf.remove = sum(!(lnf > lnf.lim)) , lnf.median = median(lnf), lnf.mad =mad(lnf), lnf.lim = lnf.lim, cells.to.remove.count = sum(!(log(seurat.object$nFeature_RNA) > lnf.lim & mt.fraction < mt.lim)))
 	if(save==TRUE) {
 		saveRDS(filter.stats, filename)
 	}
