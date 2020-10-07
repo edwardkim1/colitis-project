@@ -120,7 +120,7 @@ save_figures_CD <- function(dirname) {
 	p <- ElbowPlot(s3, ndims= 30)
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_elbowplot.pdf", sep=""))
 	# Clustering and Doublet Detection Figure
-	s4 <- merge_CD(s2, s3)
+	s4 <- merge_CD(s3, s2)
 	p <- DimPlot(s4)
 	q <- DimPlot(s4, reduction = "umap", group.by="DF_hi.lo")+ scale_colour_manual(values=c("red","yellow","gray"))
 	out <- p + q
