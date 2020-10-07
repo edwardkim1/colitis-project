@@ -113,7 +113,7 @@ save_figures_CD <- function(dirname) {
 	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted")
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
 	# Variable Features Save & Figure
-	VariableFeatures(s3)%>%saveRDS(paste("saved_objects/CD_martin_092120/",dirname,"_hvf.RDS", sep=""))
+	VariableFeatures(s3)%>%saveRDS(paste("saved_objects/CD_martin_qc_092120/",dirname,"_hvf.RDS", sep=""))
 	p <- VariableFeaturePlot.Tcells(s3) %>% LabelPoints(points=head(VariableFeatures(s3),10), repel= TRUE)
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_VariableFeatures.pdf", sep=""))
 	# PCA Elbow Plot Figure
