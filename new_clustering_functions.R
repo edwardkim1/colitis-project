@@ -58,6 +58,7 @@ qc_CD <- function(dirname) {
 }
 
 merge_CD <- function(s.object1,s.object2) {
+	require(Seurat)
 	s <- merge(s.object1, s.object2)
 	# extract and store Variable Features
 	s <- FindVariableFeatures(s,selection.method = "vst", nfeatures = 2000)
