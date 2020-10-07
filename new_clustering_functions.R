@@ -113,17 +113,17 @@ save_figures_CD <- function(dirname) {
 	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted")
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
 	# Variable Features Save & Figure
-	s4 <- merge_CD(s2, s3)
-	VariableFeatures(s4)%>%saveRDS(paste("saved_objects/CD_martin_092120/",dirname,"_hvf.RDS", sep=""))
-	p <- VariableFeaturePlot.Tcells(s4) %>% LabelPoints(points=head(VariableFeatures(s4),10), repel= TRUE)
+	VariableFeatures(s3)%>%saveRDS(paste("saved_objects/CD_martin_092120/",dirname,"_hvf.RDS", sep=""))
+	p <- VariableFeaturePlot.Tcells(s3) %>% LabelPoints(points=head(VariableFeatures(s3),10), repel= TRUE)
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_VariableFeatures.pdf", sep=""))
 	# PCA Elbow Plot Figure
-	p <- ElbowPlot(s4, ndims= 30)
+	p <- ElbowPlot(s3, ndims= 30)
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_elbowplot.pdf", sep=""))
 	# Clustering and Doublet Detection Figure
+	s4 <- merge_CD(s2, s3)
 	p <- DimPlot(s4)
 	q <- DimPlot(s4, reduction = "umap", group.by="DF_hi.lo")+ scale_colour_manual(values=c("red","yellow","gray"))
-	p + q
+	out <- p + q
 	ggsave(paste("figures/CD_martin_092120/",dirname,"_UMAP_doublets.pdf", sep=""), width= 12, height= 6, units= "in")
 }
 
