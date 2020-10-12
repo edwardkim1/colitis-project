@@ -507,3 +507,42 @@ DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), 
 	# output
 	return(list(y.ab = y.ab, fit.ab = fit.ab,res = res))
 }
+
+
+matrix.sort.no.diag <- function(matrix) {
+ nfile=matrix(0,ncol=max(dim(matrix)),nrow=max(dim(matrix)))
+ nfile[,1:ncol(matrix)]=as.matrix(matrix)
+ rownames(nfile)=rownames(matrix)
+ addname=make.names(rep('A',max(dim(matrix))-ncol(matrix)), unique=T)
+ colnames(nfile)=c(colnames(matrix),addname)
+ ffile=matrix.sort(nfile)
+ '%ni%' <- Negate('%in%')
+ ncolnames=colnames(ffile)
+ pos=which(ncolnames %ni% addname)
+ matrix=ffile[,pos]
+}
+
+matrix.sort.no.diag.T <- function(matrix) {
+ nfile=matrix(0,ncol=max(dim(matrix)),nrow=max(dim(matrix)))
+ nfile[1:nrow(matrix),]=as.matrix(matrix)
+ colnames(nfile)=colnames(matrix)
+ addname=make.names(rep('A',max(dim(matrix))-nrow(matrix)), unique=T)
+ rownames(nfile)=c(rownames(matrix),addname)
+ ffile=matrix.sort(nfile)
+ '%ni%' <- Negate('%in%')
+ ncolnames=rownames(ffile)
+ pos=which(ncolnames %ni% addname)
+ matrix=ffile[pos,]
+}
+
+matrix.sort <- function(matrix) {
+ if (nrow(matrix) != ncol(matrix)) stop("Not diagonal")
+ if(is.null(rownames(matrix))) rownames(matrix) <- 1:nrow(matrix)
+
+ row.max <- apply(matrix,1,which.max)
+ if(all(table(row.max) != 1)) stop("Ties cannot be resolved")
+
+ matrix[names(sort(row.max)),]
+}
+
+
