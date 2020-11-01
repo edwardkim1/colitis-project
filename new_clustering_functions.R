@@ -428,17 +428,30 @@ label_singleR <- function(seurat.object, save.diagnostics=F, save.name=NULL) {
 	return(seurat.object)
 }
 
-#add_labels() <- function(seurat.object, labels) {
-
-
-#}
-
 add_inflamed_id <- function(seurat.object) {
-	inflammed <-c("_1$","_3$","_6$","_7$","_10$","_12$","_14$","_16$","_18$")
-	toMatch <- paste(inflammed,collapse="|")
-	seurat.object$status <- ifelse(grepl(colnames(seurat.object), pattern=toMatch),"CD_inflamed","CD_non-inflamed")
+	inflamed <-c("CD__69$","CD_122$","CD_128$","CD_138$","CD_158$","CD_181$","CD_187$","CD_193$","CD_196$","CD_209")
+	toMatch <- paste(inflamed,collapse="|")
+	seurat.object$status <- ifelse(grepl(s$sample.id, pattern=toMatch),"CD_inflamed","CD_uninflamed")
 	seurat.object
 }
+
+add_patient_id_all <- function(seurat.object) {
+	p.id <- ifelse(grepl(s$sample.id,pattern="_68$|_69$"),"Patient 5","")
+	p.id <- ifelse(grepl(s$sample.id,pattern="_122$|_123$"),"Patient 6",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_128$|_129$"),"Patient 7",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_135$|_138$"),"Patient 8",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_158$|_159$"),"Patient 10",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_180$|_181$"),"Patient 11",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_186$|_187$"),"Patient 12",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_189$|_190$"),"Patient 13",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_192$|_193$"),"Patient 14",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_195$|_196$"),"Patient 15",p.id)
+	p.id <- ifelse(grepl(s$sample.id,pattern="_208$|_209$"),"Patient 16",p.id)
+	p.id <- factor(p.id, levels = c("Patient 5","Patient 6","Patient 7","Patient 8","Patient 10","Patient 11","Patient 12","Patient 13","Patient 14","Patient 15","Patient 16"))
+	seurat.object$patient.id <- p.id
+	seurat.object
+}
+
 
 
 save_UMAP_figures <- function(seurat.object) {
@@ -509,6 +522,7 @@ DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), 
 }
 
 
+# Use when not a square matrix
 matrix.sort.no.diag <- function(matrix) {
  nfile=matrix(0,ncol=max(dim(matrix)),nrow=max(dim(matrix)))
  nfile[,1:ncol(matrix)]=as.matrix(matrix)
@@ -522,6 +536,7 @@ matrix.sort.no.diag <- function(matrix) {
  matrix=ffile[,pos]
 }
 
+# Use when not a square matrix and want to transpose
 matrix.sort.no.diag.T <- function(matrix) {
  nfile=matrix(0,ncol=max(dim(matrix)),nrow=max(dim(matrix)))
  nfile[1:nrow(matrix),]=as.matrix(matrix)
@@ -535,6 +550,7 @@ matrix.sort.no.diag.T <- function(matrix) {
  matrix=ffile[pos,]
 }
 
+# use when square matrix
 matrix.sort <- function(matrix) {
  if (nrow(matrix) != ncol(matrix)) stop("Not diagonal")
  if(is.null(rownames(matrix))) rownames(matrix) <- 1:nrow(matrix)
