@@ -454,6 +454,8 @@ add_patient_id_all <- function(seurat.object) {
 
 
 
+
+
 save_UMAP_figures <- function(seurat.object) {
 	require(gridExtra)
 	filename <- paste(seurat.object,".pdf",sep="")
@@ -561,4 +563,31 @@ matrix.sort <- function(matrix) {
  matrix[names(sort(row.max)),]
 }
 
-
+eval_metric2 <- function(a,b,pre.ttn,post.ttn) {	
+	# a is for the integrated dataset
+	# b is for the original dataset
+	# buffer storage with just the clusters:
+	levels(a) <- paste("a", levels(a))
+	levels(b) <- paste("b", levels(b))
+	post.ttn <- paste("a", post.ttn)
+	pre.ttn <- paste("b", pre.ttn)
+	# investigation:
+	names(a)
+	names(b)
+	# swapping indices in a to match the those in b:
+	names(a) <- str_glue("{str_sub(names(a),1,-3)}")
+	# remove ones that match cluster 8
+	df1 <- data.frame(names = names(a), a=a)
+	df2 <- data.frame(names = names(b),b=b)
+	temp.df <- full_join(df1,df2,by = "names")
+	tab <- table(temp.df$a, temp.df$b)
+	# extract the values
+	answer <- matrix(nrow=length(pre.ttn), ncol = length(post.ttn))
+	for(i in 1:length(pre.ttn)){
+		for(j in 1:length(post.ttn)){
+			celltype.total <- table(temp.df$b,useNA="ifany")[pre.ttn[i]]
+			answer[i,j] <- tab[post.ttn[j],pre.ttn[i]]/celltype.total
+		}
+	}
+	return(answer)
+}
