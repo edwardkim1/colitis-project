@@ -566,14 +566,11 @@ matrix.sort <- function(matrix) {
 eval_metric2 <- function(a,b,pre.ttn,post.ttn) {	
 	# a is for the integrated dataset
 	# b is for the original dataset
-	# buffer storage with just the clusters:
+	# add disambiguating titles to the vectors:
 	levels(a) <- paste("a", levels(a))
 	levels(b) <- paste("b", levels(b))
 	post.ttn <- paste("a", post.ttn)
 	pre.ttn <- paste("b", pre.ttn)
-	# investigation:
-	names(a)
-	names(b)
 	# swapping indices in a to match the those in b:
 	names(a) <- str_glue("{str_sub(names(a),1,-3)}")
 	# remove ones that match cluster 8
