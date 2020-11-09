@@ -581,7 +581,7 @@ eval_metric2 <- function(a,b,pre.ttn,post.ttn) {
 	df2 <- data.frame(names = names(b),b=b)
 	temp.df <- full_join(df1,df2,by = "names")
 	tab <- table(temp.df$a, temp.df$b)
-	# extract the values
+	# get the values; rows are the pre-integrated clusters
 	answer <- matrix(nrow=length(pre.ttn), ncol = length(post.ttn))
 	for(i in 1:length(pre.ttn)){
 		for(j in 1:length(post.ttn)){
