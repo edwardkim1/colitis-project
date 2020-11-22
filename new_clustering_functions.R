@@ -659,6 +659,13 @@ GSEA <- function(gene_list, GO_file, pval) {
   return(output)
 }
 
+
+# required fast match operator function for collapsePathways.fixed
+`%fin%` <- function(x, table) {
+  stopifnot(require(fastmatch))
+  fmatch(x, table, nomatch = 0L) > 0L
+}
+
 # fixed this function in fGSEA package
 collapsePathways.fixed <- function(fgseaRes,
                              pathways,
