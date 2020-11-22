@@ -31,6 +31,7 @@
 ## edward_kim@college.harvard.edu - last edit: Oct. 7, 2020
 ############################################################
 require(Seurat)
+require(fgsea)
 
 filter_stats_CD <- function(seurat.object, e.out, save = FALSE, filename = "") {
 	## removing emptydroplets
