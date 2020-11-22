@@ -593,6 +593,7 @@ eval_metric2 <- function(a,b,pre.ttn,post.ttn) {
 GSEA <- function(gene_list, GO_file, pval) {
   set.seed(54321)
   require(dplyr)
+  require(stringr)
   require(gage)
   require(fgsea)
   
@@ -632,8 +633,8 @@ GSEA <- function(gene_list, GO_file, pval) {
   keepdowns = fgRes[fgRes$NES < 0 & !is.na(match(fgRes$pathway, downs$Pathway)), ]
   
   ### Collapse redundant pathways
-  Up = fgsea::collapsePathways(keepups, pathways = myGO, stats = gene_list,  nperm = 500, pval.threshold = 0.05)
-  Down = fgsea::collapsePathways(keepdowns, myGO, gene_list,  nperm = 500, pval.threshold = 0.05) 
+  Up = collapsePathways.fixed(keepups, pathways = myGO, stats = gene_list,  nperm = 500, pval.threshold = 0.05)
+  Down = collapsePathways.fixed(keepdowns, myGO, gene_list,  nperm = 500, pval.threshold = 0.05) 
   
   fgRes = fgRes[ !is.na(match(fgRes$pathway, 
            c( Up$mainPathways, Down$mainPathways))), ] %>% 
@@ -658,5 +659,66 @@ GSEA <- function(gene_list, GO_file, pval) {
   return(output)
 }
 
+# fixed this function in fGSEA package
+collapsePathways.fixed <- function(fgseaRes,
+                             pathways,
+                             stats,
+                             pval.threshold=0.05,
+                             nperm=10/pval.threshold,
+                             gseaParam=1) {
+    universe <- names(stats)
+
+    pathways <- pathways[fgseaRes$pathway]
+    pathways <- lapply(pathways, intersect, universe)
+
+    parentPathways <- setNames(rep(NA, length(pathways)), names(pathways))
+
+    for (i in seq_along(pathways)) {
+        p <- names(pathways)[i]
+        if (!is.na(parentPathways[p])) {
+            next
+        }
+
+        pathwaysToCheck <- setdiff(names(which(is.na(parentPathways))), p)
+        pathwaysUp <- fgseaRes[pathways %fin% pathwaysToCheck & ES >= 0][, pathways]
+        pathwaysDown <- fgseaRes[pathways %fin% pathwaysToCheck & ES < 0][, pathways]
+
+        if (length(pathwaysToCheck) == 0) {
+            break
+        }
+
+        minPval <- setNames(rep(1, length(pathwaysToCheck)), pathwaysToCheck)
+
+        u1 <- setdiff(universe, pathways[[p]])
+
+        fgseaResUp1 <- fgseaSimple(pathways = pathways[pathwaysUp], stats=stats[u1],
+                                   nperm=nperm, maxSize=length(u1)-1, nproc=1,
+                                   gseaParam=gseaParam, scoreType = "pos")
+        fgseaResDown1 <- fgseaSimple(pathways = pathways[pathwaysDown], stats=stats[u1],
+                                     nperm=nperm, maxSize=length(u1)-1, nproc=1,
+                                     gseaParam=gseaParam, scoreType = "neg")
+        fgseaRes1 <- rbindlist(list(fgseaResUp1, fgseaResDown1), use.names = TRUE)
+
+        minPval[fgseaRes1$pathway] <- pmin(minPval[fgseaRes1$pathway], fgseaRes1$pval)
+
+        u2 <- pathways[[p]]
+
+        fgseaResUp2 <- fgseaSimple(pathways = pathways[pathwaysUp], stats=stats[u2],
+                                   nperm=nperm, maxSize=length(u2)-1, nproc=1,
+                                   gseaParam=gseaParam, scoreType = "pos")
+        fgseaResDown2 <- fgseaSimple(pathways = pathways[pathwaysDown], stats=stats[u2],
+                                     nperm=nperm, maxSize=length(u2)-1, nproc=1,
+                                     gseaParam=gseaParam, scoreType = "neg")
+        fgseaRes2 <- rbindlist(list(fgseaResUp2, fgseaResDown2), use.names = TRUE)
+
+        minPval[fgseaRes2$pathway] <- pmin(minPval[fgseaRes2$pathway], fgseaRes2$pval)
+
+        parentPathways[names(which(minPval > pval.threshold))] <- p
+    }
+
+    return(list(mainPathways=names(which(is.na(parentPathways))),
+                parentPathways=parentPathways))
+}
+environment(collapsePathways) <- environment(fgsea)
 
 
