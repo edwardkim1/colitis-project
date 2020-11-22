@@ -674,7 +674,7 @@ collapsePathways.fixed <- function(fgseaRes,
                              pval.threshold=0.05,
                              nperm=10/pval.threshold,
                              gseaParam=1) {
-    require(data.frame)
+    require(data.table)
     universe <- names(stats)
 
     pathways <- pathways[fgseaRes$pathway]
