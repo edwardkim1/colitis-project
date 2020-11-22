@@ -609,8 +609,7 @@ GSEA <- function(gene_list, GO_file, pval) {
   fgRes <- fgsea::fgsea(pathways = myGO, 
                            stats = gene_list,
                            minSize=15,
-                           maxSize=600,
-                           nperm=10000) %>% 
+                           maxSize=600) %>% 
                   as.data.frame() %>% 
                   dplyr::filter(padj < !!pval)
   #print(dim(fgRes))
