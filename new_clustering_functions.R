@@ -687,8 +687,8 @@ collapsePathways.fixed <- function(fgseaRes,
         }
 
         pathwaysToCheck <- setdiff(names(which(is.na(parentPathways))), p)
-        pathwaysUp <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES >= 0][, fgseaRes$pathways]
-        pathwaysDown <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES < 0][, fgseaRes$pathways]
+        pathwaysUp <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES >= 0][, "pathway"]
+        pathwaysDown <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES < 0][, "pathway"]
 
         if (length(pathwaysToCheck) == 0) {
             break
