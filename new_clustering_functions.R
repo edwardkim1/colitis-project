@@ -633,8 +633,8 @@ GSEA <- function(gene_list, GO_file, pval) {
   keepdowns = fgRes[fgRes$NES < 0 & !is.na(match(fgRes$pathway, downs$Pathway)), ]
   
   ### Collapse redundant pathways
-  Up = collapsePathways.fixed(keepups, pathways = myGO, stats = gene_list,  nperm = 500, pval.threshold = 0.05)
-  Down = collapsePathways.fixed(keepdowns, myGO, gene_list,  nperm = 500, pval.threshold = 0.05) 
+  Up = collapsePathways.fixed(keepups, pathways = myGO, stats = gene_list, pval.threshold = 0.05)
+  Down = collapsePathways.fixed(keepdowns, myGO, gene_list, pval.threshold = 0.05) 
   
   fgRes = fgRes[ !is.na(match(fgRes$pathway, 
            c( Up$mainPathways, Down$mainPathways))), ] %>% 
@@ -687,8 +687,8 @@ collapsePathways.fixed <- function(fgseaRes,
         }
 
         pathwaysToCheck <- setdiff(names(which(is.na(parentPathways))), p)
-        pathwaysUp <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES >= 0][, "pathway"]
-        pathwaysDown <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES < 0][, "pathway"]
+        pathwaysUp <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES >= 0, "pathway"]
+        pathwaysDown <- fgseaRes[fgseaRes$pathway %fin% pathwaysToCheck & fgseaRes$ES < 0, "pathway"]
 
         if (length(pathwaysToCheck) == 0) {
             break
