@@ -88,7 +88,7 @@ qc_CD <- function(dirname, date) {
 }
 
 qc_CD_postcb <- function(dirname, date) {
-	temp <- Read10X_h5(data.dir = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""))
+	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""), use.names=T)
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	# remove low quality cells
