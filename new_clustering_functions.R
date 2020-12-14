@@ -361,7 +361,7 @@ label_doublets <- function(seurat.object, nPCs= 30, doublet.formation.rate= 0.1,
 	require(DoubletFinder)
 	require(dplyr)
 	## pK identification
-	seurat.object_pK <- paramSweep_v3(s, PCs = 1:nPCs) %>% summarizeSweep(GT = FALSE) %>% find.pK.noPlot()
+	seurat.object_pK <- paramSweep_v3(seurat.object, PCs = 1:nPCs) %>% summarizeSweep(GT = FALSE) %>% find.pK.noPlot()
 	pK_max <- seurat.object_pK[which.max(seurat.object_pK$BCmetric),]$pK
 	pK_max <- as.numeric(levels(pK_max)[as.integer(pK_max)])
 	## Output pK maximization using ggplot2 as pdf
