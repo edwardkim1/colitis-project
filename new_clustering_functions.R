@@ -182,6 +182,55 @@ save_figures_CD <- function(dirname, date) {
 	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_UMAP_doublets.pdf", sep=""), width= 12, height= 6, units= "in")
 }
 
+
+save_figures_CD_postcb <- function(dirname, date) {
+	## import relevant objects
+	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""), use.names=T)
+	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
+	stats <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	s1 <- s[,stats$is.cell]
+	s1$cells.to.remove <- stats$cells.to.remove
+	s2 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_2star.RDS", sep=""))
+	s3 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
+	# Mito% Pre/Post Violin Plot
+	p <- ggplot(data=data.frame(x= c(rep("pre mito%", length(stats$mt.pre)),rep("post mito%", length(stats$mt.post))), percent.mito = c(stats$mt.pre,stats$mt.post))) + geom_violin(aes(x= x, y=percent.mito))
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_p101519_CD3_MITOviolin.pdf", sep=""))
+	# Log(No. of Features) Pre/Post Violin Plot
+	p <- ggplot(data=data.frame(x= c(rep("pre lnf", length(stats$lnf.pre)),rep("post lnf", length(stats$lnf.post))), log.num.feats = c(stats$lnf.pre,stats$lnf.post))) + geom_violin(aes(x= x, y=log.num.feats))
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNFviolin.pdf", sep=""))
+
+	# Log.no.features vs. mito% Figure
+	p <- s1 %>% FeatureScatter(feature1="nFeature_RNA", feature2="percent.mt", group.by="cells.to.remove")
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNFxMITO.pdf", sep=""))
+
+	# Mito% Model Fitting Figure
+	p <- plot_kde(stats$mt.pre, kernel = "gaussian", bw=0.5, lab.x = "mitochondrial gene percentage (per cell)", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$mt.median,stats$mt.mad)}, 
+	support=seq(0,100,0.1))
+	p + geom_vline(xintercept= stats$mt.lim, color = "red") +
+	geom_vline(xintercept= stats$mt.median-3*stats$mt.mad, linetype = "dotted") + 
+	geom_vline(xintercept= stats$mt.median+3*stats$mt.mad, linetype = "dotted")
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_MITO-KDE-Normal.pdf", sep=""))
+	# Log.no.features Model Fitting Figure
+	p <- plot_kde(stats$lnf.pre, kernel = "gaussian", bw=0.01, lab.x = "Log(No. of Features)", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$lnf.median,stats$lnf.mad)})
+	p + geom_vline(xintercept= stats$lnf.lim, color = "red") +
+	geom_vline(xintercept= stats$lnf.median-3*stats$lnf.mad, linetype = "dotted") +
+	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted")
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
+	# Variable Features Save & Figure
+	VariableFeatures(s3)%>%saveRDS(paste("saved_objects/CD_martin_qc_", date, "/",dirname,"_hvf.RDS", sep=""))
+	p <- VariableFeaturePlot.Tcells(s3) %>% LabelPoints(points=head(VariableFeatures(s3),10), repel= TRUE)
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_VariableFeatures.pdf", sep=""))
+	# PCA Elbow Plot Figure
+	p <- ElbowPlot(s3, ndims= 30)
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_elbowplot.pdf", sep=""))
+	# Clustering and Doublet Detection Figure
+	s4 <- merge_CD(s3, s2)
+	p <- DimPlot(s4)
+	q <- DimPlot(s4, reduction = "umap", group.by="DF_hi.lo")+ scale_colour_manual(values=c("red","yellow","gray"))
+	out <- p + q
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_UMAP_doublets.pdf", sep=""), width= 12, height= 6, units= "in")
+}
+
 get_info_CD <- function(dirname,date) {
 	stats <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	s2 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_2star.RDS", sep=""))
