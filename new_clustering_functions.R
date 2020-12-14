@@ -87,6 +87,31 @@ qc_CD <- function(dirname, date) {
 	saveRDS(s,paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
 }
 
+qc_CD_postcb <- function(dirname, date) {
+	temp <- Read10X_h5(data.dir = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""))
+	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
+	stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	# remove low quality cells
+	s$cells.to.remove <- stats$cells.to.remove
+	s <- s[,!s$cells.to.remove]
+	s <- NormalizeData(s, normalization.method = "LogNormalize", scale.factor = 10000) %>% FindVariableFeatures(selection.method = "vst", nfeatures = 2000)
+	## Highly variable genes
+	hvf <- VariableFeatures(s)
+	'%ni%' = Negate('%in%')
+	all.genes <- rownames(s)
+	trvgenes <- all.genes[grepl(x=all.genes, pattern = "^TRAV|^TRBV|^TRGV|^TRDV")]
+	igvgenes <- all.genes[grepl(x=all.genes, pattern = "^IG.V")]
+	VariableFeatures(s) <- hvf[hvf %ni% c(trvgenes,igvgenes)]
+	# Do the rest
+	nPCs <- 20
+	s <- ScaleData(s, features = all.genes, vars.to.regress="percent.mt") %>% RunPCA(features=VariableFeatures(s)) %>% RunUMAP(dims = 1:nPCs) %>% FindNeighbors(dims = 1:nPCs) %>% FindClusters(resolution = 0.5)
+	s <- label_doublets(s,nPCs=nPCs, save.pK.figure=T, filename= paste("figures/CD_martin_", date, "/" ,dirname,"_pK_ggplot.pdf", sep=""))
+	s1 <- subset(s, subset = DF_hi.lo == "Doublet_hi")
+	saveRDS(s1,paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_2star.RDS", sep=""))
+	s <- subset(s, subset = DF_hi.lo != "Doublet_hi")
+	saveRDS(s,paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
+}
+
 merge_CD <- function(s.object1,s.object2) {
 	require(Seurat)
 	s <- merge(s.object1, s.object2)
@@ -181,11 +206,13 @@ filter_stats <- function(seurat.object, save = FALSE, filename = "") {
 	#thresholding number of unique features
 	lnf <- log(seurat.object$nFeature_RNA)
 	lnf.p = pnorm(lnf, mean = median(lnf), sd = mad(lnf), lower.tail = TRUE)
-	lnf.lim = max(lnf[which(p.adjust(lnf.p, method = "fdr") < 1e-2)])
+	lnf.lim1 = max(lnf[which(p.adjust(lnf.p, method = "fdr") < 1e-2)])
+	lnf.lim = max(log(200),lnf.lim1)
 	#thresholding by mitochondrial fraction
 	mt.fraction <- seurat.object$percent.mt
 	mt.p = pnorm(mt.fraction, mean = median(mt.fraction), sd = mad(mt.fraction), lower.tail = FALSE)
-	mt.lim = min(mt.fraction[which(p.adjust(mt.p, method = "fdr") < 1e-2)])
+	mt.lim1 = min(mt.fraction[which(p.adjust(mt.p, method = "fdr") < 1e-2)])
+	mt.lim = min(20,mt.lim1)
 	# output
 	filter.stats = list(mt.pre = mt.fraction, mt.post = mt.fraction[which(mt.fraction < mt.lim)], lnf.pre = lnf, lnf.post = lnf[which(lnf > lnf.lim)], cells.to.remove= !(lnf > lnf.lim & mt.fraction < mt.lim), mt.remove = sum(!(mt.fraction < mt.lim)) , mt.median = median(mt.fraction), mt.mad =mad(mt.fraction), mt.lim = mt.lim, lnf.remove = sum(!(lnf > lnf.lim)) , lnf.median = median(lnf), lnf.mad =mad(lnf), lnf.lim = lnf.lim, total.remove = sum(!(lnf > lnf.lim & mt.fraction < mt.lim)))
 	if(save==TRUE) {
@@ -730,4 +757,8 @@ collapsePathways.fixed <- function(fgseaRes,
 }
 environment(collapsePathways) <- environment(fgsea)
 
-
+# function to get ggplot colors
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
