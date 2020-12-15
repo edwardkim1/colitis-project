@@ -59,6 +59,28 @@ filter_stats_CD <- function(seurat.object, e.out, save = FALSE, filename = "") {
 	return(filter.stats)
 }
 
+filter_stats_CD_postcb <- function(seurat.object, save = FALSE, filename = "") {
+	# first, threshold by mitochondrial fraction
+	# max threshold (20%)
+	mt.fraction <- seurat.object$percent.mt
+	mt.p = pnorm(mt.fraction, mean = median(mt.fraction), sd = mad(mt.fraction), lower.tail = FALSE)
+	mt.lim1 = min(mt.fraction[which(p.adjust(mt.p, method = "fdr") < 1e-2)])
+	mt.lim = min(20,mt.lim1)
+	# thresholding on natural log of number of unique features; after removing dead cells
+	# min threshold (log(200))
+	lnf <- log(seurat.object$nFeature_RNA[which(mt.fraction < mt.lim)])
+	lnf.p = pnorm(lnf, mean = median(lnf), sd = mad(lnf), lower.tail = TRUE)
+	lnf.lim1 = max(lnf[which(p.adjust(lnf.p, method = "fdr") < 1e-2)])
+	lnf.lim = max(log(200),lnf.lim1)
+	# output
+	filter.stats = list(mt.pre = mt.fraction, mt.post = mt.fraction[which(mt.fraction < mt.lim)], lnf.pre = lnf, lnf.post = lnf[which(lnf > lnf.lim)], cells.to.remove= !(log(seurat.object$nFeature_RNA) > lnf.lim & mt.fraction < mt.lim), mt.remove = sum(!(mt.fraction < mt.lim)) , mt.median = median(mt.fraction), mt.mad =mad(mt.fraction), mt.lim = mt.lim, lnf.remove = sum(!(lnf > lnf.lim)) , lnf.median = median(lnf), lnf.mad =mad(lnf), lnf.lim = lnf.lim, cells.to.remove.count = sum(!(log(seurat.object$nFeature_RNA) > lnf.lim & mt.fraction < mt.lim)))
+	if(save==TRUE) {
+		saveRDS(filter.stats, filename)
+	}
+
+	return(filter.stats)
+}
+
 qc_CD <- function(dirname, date) {
 	temp <- Read10X(data.dir = paste("data/CD_martin/",dirname,sep=""))
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
@@ -88,8 +110,8 @@ qc_CD <- function(dirname, date) {
 }
 
 qc_CD_postcb <- function(dirname, date) {
-	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""), use.names=T)
-	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
+	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb_filtered.h5",sep=""), use.names=T)
+	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 10, min.features = 1) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	# remove low quality cells
 	s$cells.to.remove <- stats$cells.to.remove
@@ -186,7 +208,7 @@ save_figures_CD <- function(dirname, date) {
 save_figures_CD_postcb <- function(dirname, date) {
 	## import relevant objects
 	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""), use.names=T)
-	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
+	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 10, min.features = 1) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	s1 <- s[,stats$is.cell]
 	s1$cells.to.remove <- stats$cells.to.remove
@@ -194,7 +216,7 @@ save_figures_CD_postcb <- function(dirname, date) {
 	s3 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
 	# Mito% Pre/Post Violin Plot
 	p <- ggplot(data=data.frame(x= c(rep("pre mito%", length(stats$mt.pre)),rep("post mito%", length(stats$mt.post))), percent.mito = c(stats$mt.pre,stats$mt.post))) + geom_violin(aes(x= x, y=percent.mito))
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_p101519_CD3_MITOviolin.pdf", sep=""))
+	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_MITOviolin.pdf", sep=""))
 	# Log(No. of Features) Pre/Post Violin Plot
 	p <- ggplot(data=data.frame(x= c(rep("pre lnf", length(stats$lnf.pre)),rep("post lnf", length(stats$lnf.post))), log.num.feats = c(stats$lnf.pre,stats$lnf.post))) + geom_violin(aes(x= x, y=log.num.feats))
 	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNFviolin.pdf", sep=""))
