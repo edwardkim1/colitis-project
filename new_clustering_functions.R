@@ -207,7 +207,7 @@ save_figures_CD <- function(dirname, date) {
 
 save_figures_CD_postcb <- function(dirname, date) {
 	## import relevant objects
-	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb.h5",sep=""), use.names=T)
+	temp <- Read10X_h5(filename = paste("data/CD_martin_cellbender/",dirname, "cb_filtered.h5",sep=""), use.names=T)
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 10, min.features = 1) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	s1 <- s[,stats$is.cell]
