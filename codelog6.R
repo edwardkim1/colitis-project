@@ -112,6 +112,8 @@ ggsave("figures/onlyTcells_vary_kparam2.pdf", width= 12, height= 6, units= "in")
 s <- cluster_umap(s, npc=10, k.param=200, resolution=0.5, min.dist=0.3)
 saveRDS(s,"saved_objects/onlyTcells.rds")
 
+s <- cluster_umap(s, npc=15, k.param=50, resolution=0.5, min.dist=0.3)
+saveRDS(s,"saved_objects/onlyTcells_npc15_k50.rds")
 
 ####################
 ## DE: onlyTcells ##
@@ -121,6 +123,15 @@ top5 <- s_regress.markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
 p <- DoHeatmap(s, features = top5$gene) + NoLegend()
 ggsave("figures/onlyTcells_heatmap.pdf", width = 30, height = 20, units="in")
 ggsave("figures/onlyTcells_heatmapv2.pdf")
+
+################################
+## DE: onlyTcells npc 15 k 50 ##
+################################
+s_regress.markers <- FindAllMarkers(s, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, verbose=F)
+top5 <- s_regress.markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
+p <- DoHeatmap(s, features = top5$gene, raster=FALSE) + NoLegend()
+ggsave("figures/onlyTcells1550_heatmap.pdf")
+#ggsave("figures/onlyTcells1550_heatmap.pdf", width = 30, height = 20, units="in")
 
 ##################################
 ## cluster labeling: onlyTcells ##
@@ -155,6 +166,7 @@ p3 <- DimPlot(s, reduction = "umap", label=T, group.by="SingleR.Monaco")
 ggarrange(p1,p2,p3, ncol=3, nrow=1)
 ggsave("figures/onlyTcells_labeling.pdf", width= 12, height= 3, units= "in")
 # Diagnostic plot
+
 
 
 

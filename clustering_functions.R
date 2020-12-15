@@ -103,12 +103,6 @@ qc <- function(dirname) {
 	s1.qc2 <- s1.qc1[,which(mt.fraction < mt.lim)]
 	saveRDS(c(median(mt.fraction),mad(mt.fraction),mt.lim), paste(dirname,"mito_stats.rds",sep="_"))
 
-	#mt.fracNoZero <- mt.fraction[mt.fraction!=0]
-	#LNmean = function(x) {sum(log(x))/length(x)}
-	#LNvar = function(x) {sum((log(x)-LNmean(x))^2)/length(x)}
-	#mt.pLN = plnorm(mt.fraction, mean = LNmean(mt.fracNoZero), sd = sqrt(LNvar(mt.fracNoZero)), lower.tail = FALSE)
-	#mt.limLN = min(mt.fraction[which(p.adjust(mt.pLN, method = "fdr") < 1e-2)])
-
 	## Create Seurat Object ##
 	s1 <- CreateSeuratObject(counts = s1.qc2, project = dirname, min.cells = 0, min.features = 0)
 	s1 <- NormalizeData(s1, normalization.method = "LogNormalize", scale.factor = 10000)
