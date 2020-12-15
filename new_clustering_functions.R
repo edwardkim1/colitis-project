@@ -273,6 +273,24 @@ get_info_CD <- function(dirname,date) {
 	return(x)
 }
 
+get_info_CD_postcb <- function(dirname,date) {
+	stats <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	s2 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_2star.RDS", sep=""))
+	s3 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
+	x <- data.frame(
+	"Orig.count" = length(stats$mt.pre),
+	"Mito.U.lnf.removed" = stats$cells.to.remove.count,
+	"Mito.upper.thres" = stats$mt.lim,
+	"Feats.lower.thres" = exp(stats$lnf.lim),
+	"Doublet_hi" = dim(s2)[2],
+	"Doublet_lo" = table(s3$DF_hi.lo)[["Doublet_lo"]],
+	"Singlet" = table(s3$DF_hi.lo)[["Singlet"]],
+	"Final_count" = dim(s3)[2]
+	)
+	rownames(x) <- dirname
+	return(x)
+}
+
 filter_stats <- function(seurat.object, save = FALSE, filename = "") {
 	#thresholding number of unique features
 	lnf <- log(seurat.object$nFeature_RNA)
