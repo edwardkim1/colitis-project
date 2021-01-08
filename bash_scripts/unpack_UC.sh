@@ -10,7 +10,7 @@ echo -n "extracting tar into ${new_dir_name}..."
 
 #EXTRACT TAR IN DESIRED DIRECTORY AND GUNZIP EVERYTHING
 mkdir $new_dir_name
-tar -xf GSE134809_RAW.tar -C $path/$new_dir_name
+tar -xf GSE125527_RAW.tar -C $path/$new_dir_name
 cd $path/$new_dir_name
 echo "done"
 echo -n "gunzip..."
