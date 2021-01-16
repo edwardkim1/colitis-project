@@ -83,8 +83,14 @@ filter_stats_CD_postcb <- function(seurat.object, save = FALSE, filename = "") {
 	return(filter.stats)
 }
 
-qc_CD <- function(dirname, date, dataset="martin") {
-	temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
+qc_CD <- function(dirname, date, dataset="martin", input.dirname = NULL) {
+	
+	if (is.null(input.dirname)) {
+		temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
+	} else {
+		temp <- Read10X(data.dir = input.dirname)
+	}
+
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	if(dataset=="martin") {
 		e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
