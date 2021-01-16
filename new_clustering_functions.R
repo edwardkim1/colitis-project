@@ -88,7 +88,7 @@ qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL) {
 	if (is.null(input.directory)) {
 		temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
 	} else {
-		temp <- Read10X(data.dir = input.dirname)
+		temp <- Read10X(data.dir = input.directory)
 	}
 
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
@@ -173,7 +173,7 @@ save_figures_CD <- function(dirname, date, dataset="martin", input.directory=NUL
 	if (is.null(input.directory)) {
 		temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
 	} else {
-		temp <- Read10X(data.dir = input.dirname)
+		temp <- Read10X(data.dir = input.directory)
 	}
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
