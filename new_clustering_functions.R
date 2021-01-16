@@ -83,9 +83,9 @@ filter_stats_CD_postcb <- function(seurat.object, save = FALSE, filename = "") {
 	return(filter.stats)
 }
 
-qc_CD <- function(dirname, date, dataset="martin", input.dirname = NULL) {
+qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL) {
 	
-	if (is.null(input.dirname)) {
+	if (is.null(input.directory)) {
 		temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
 	} else {
 		temp <- Read10X(data.dir = input.dirname)
@@ -168,9 +168,13 @@ merge_CD <- function(s.object1,s.object2) {
 	return(s)
 }
 
-save_figures_CD <- function(dirname, date, dataset="martin") {
+save_figures_CD <- function(dirname, date, dataset="martin", input.directory=NULL) {
 	## import relevant objects
-	temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
+	if (is.null(input.directory)) {
+		temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
+	} else {
+		temp <- Read10X(data.dir = input.dirname)
+	}
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	s1 <- s[,stats$is.cell]
