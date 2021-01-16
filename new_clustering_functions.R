@@ -2,6 +2,7 @@
 ## Updated Clustering Functions
 ##
 ## filter_stats # has to be done before scaling/normalizing
+##    ^ maybe outdated - see filter_stats_CD for updated version
 ## filter_by_libsize # has to be done before scaling/normalizing
 ## filter_by_numfeats # has to be done before scaling/normalizing
 ## filter_by_mito# has to be done before scaling/normalizing
@@ -27,6 +28,7 @@
 ## merge_CD # 
 ## save_figures_CD # 
 ## get_info_CD #
+## 
 ##
 ## edward_kim@college.harvard.edu - last edit: Oct. 7, 2020
 ############################################################
@@ -81,11 +83,15 @@ filter_stats_CD_postcb <- function(seurat.object, save = FALSE, filename = "") {
 	return(filter.stats)
 }
 
-qc_CD <- function(dirname, date) {
-	temp <- Read10X(data.dir = paste("data/CD_martin/",dirname,sep=""))
+qc_CD <- function(dirname, date, dataset="martin") {
+	temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
-	e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
-	stats <- filter_stats_CD(s, e.out= e.out, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	if(dataset="martin") {
+		e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
+		stats <- filter_stats_CD(s, e.out= e.out, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	} else {
+		stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_",dataset,"_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	}
 	# remove empty drops
 	s <- s[,stats$is.cell]
 	# remove low quality cells
@@ -102,11 +108,11 @@ qc_CD <- function(dirname, date) {
 	# Do the rest
 	nPCs <- 20
 	s <- ScaleData(s, features = all.genes, vars.to.regress="percent.mt") %>% RunPCA(features=VariableFeatures(s)) %>% RunUMAP(dims = 1:nPCs) %>% FindNeighbors(dims = 1:nPCs) %>% FindClusters(resolution = 0.5)
-	s <- label_doublets(s,nPCs=nPCs, save.pK.figure=T, filename= paste("figures/CD_martin_", date, "/" ,dirname,"_pK_ggplot.pdf", sep=""))
+	s <- label_doublets(s,nPCs=nPCs, save.pK.figure=T, filename= paste("figures/CD_",dataset,"_", date, "/" ,dirname,"_pK_ggplot.pdf", sep=""))
 	s1 <- subset(s, subset = DF_hi.lo == "Doublet_hi")
-	saveRDS(s1,paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_2star.RDS", sep=""))
+	saveRDS(s1,paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_2star.RDS", sep=""))
 	s <- subset(s, subset = DF_hi.lo != "Doublet_hi")
-	saveRDS(s,paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
+	saveRDS(s,paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_3.RDS", sep=""))
 }
 
 qc_CD_postcb <- function(dirname, date) {
@@ -156,25 +162,25 @@ merge_CD <- function(s.object1,s.object2) {
 	return(s)
 }
 
-save_figures_CD <- function(dirname, date) {
+save_figures_CD <- function(dirname, date, dataset="martin") {
 	## import relevant objects
-	temp <- Read10X(data.dir = paste("data/CD_martin/",dirname,sep=""))
+	temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
-	stats <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+	stats <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	s1 <- s[,stats$is.cell]
 	s1$cells.to.remove <- stats$cells.to.remove
-	s2 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_2star.RDS", sep=""))
-	s3 <- readRDS(paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_3.RDS", sep=""))
+	s2 <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_2star.RDS", sep=""))
+	s3 <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_3.RDS", sep=""))
 	# Mito% Pre/Post Violin Plot
 	p <- ggplot(data=data.frame(x= c(rep("pre mito%", length(stats$mt.pre)),rep("post mito%", length(stats$mt.post))), percent.mito = c(stats$mt.pre,stats$mt.post))) + geom_violin(aes(x= x, y=percent.mito))
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_p101519_CD3_MITOviolin.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_p101519_CD3_MITOviolin.pdf", sep=""))
 	# Log(No. of Features) Pre/Post Violin Plot
 	p <- ggplot(data=data.frame(x= c(rep("pre lnf", length(stats$lnf.pre)),rep("post lnf", length(stats$lnf.post))), log.num.feats = c(stats$lnf.pre,stats$lnf.post))) + geom_violin(aes(x= x, y=log.num.feats))
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNFviolin.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNFviolin.pdf", sep=""))
 
 	# Log.no.features vs. mito% Figure
 	p <- s1 %>% FeatureScatter(feature1="nFeature_RNA", feature2="percent.mt", group.by="cells.to.remove")
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNFxMITO.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNFxMITO.pdf", sep=""))
 
 	# Mito% Model Fitting Figure
 	p <- plot_kde(stats$mt.pre, kernel = "gaussian", bw=0.5, lab.x = "mitochondrial gene percentage (per cell)", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$mt.median,stats$mt.mad)}, 
@@ -182,26 +188,26 @@ save_figures_CD <- function(dirname, date) {
 	p + geom_vline(xintercept= stats$mt.lim, color = "red") +
 	geom_vline(xintercept= stats$mt.median-3*stats$mt.mad, linetype = "dotted") + 
 	geom_vline(xintercept= stats$mt.median+3*stats$mt.mad, linetype = "dotted")
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_MITO-KDE-Normal.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_MITO-KDE-Normal.pdf", sep=""))
 	# Log.no.features Model Fitting Figure
 	p <- plot_kde(stats$lnf.pre, kernel = "gaussian", bw=0.01, lab.x = "Log(No. of Features)", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$lnf.median,stats$lnf.mad)})
 	p + geom_vline(xintercept= stats$lnf.lim, color = "red") +
 	geom_vline(xintercept= stats$lnf.median-3*stats$lnf.mad, linetype = "dotted") +
 	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted")
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
 	# Variable Features Save & Figure
 	VariableFeatures(s3)%>%saveRDS(paste("saved_objects/CD_martin_qc_", date, "/",dirname,"_hvf.RDS", sep=""))
 	p <- VariableFeaturePlot.Tcells(s3) %>% LabelPoints(points=head(VariableFeatures(s3),10), repel= TRUE)
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_VariableFeatures.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_VariableFeatures.pdf", sep=""))
 	# PCA Elbow Plot Figure
 	p <- ElbowPlot(s3, ndims= 30)
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_elbowplot.pdf", sep=""))
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_elbowplot.pdf", sep=""))
 	# Clustering and Doublet Detection Figure
 	s4 <- merge_CD(s3, s2)
 	p <- DimPlot(s4)
 	q <- DimPlot(s4, reduction = "umap", group.by="DF_hi.lo")+ scale_colour_manual(values=c("red","yellow","gray"))
 	out <- p + q
-	ggsave(paste("figures/CD_martin_", date, "/",dirname,"_UMAP_doublets.pdf", sep=""), width= 12, height= 6, units= "in")
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_UMAP_doublets.pdf", sep=""), width= 12, height= 6, units= "in")
 }
 
 
