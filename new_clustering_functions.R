@@ -90,7 +90,7 @@ qc_CD <- function(dirname, date, dataset="martin") {
 		e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
 		stats <- filter_stats_CD(s, e.out= e.out, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	} else {
-		stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_",dataset,"_", date, "/", dirname, "_filterstats.RDS", sep=""))
+		stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	}
 	# remove empty drops
 	s <- s[,stats$is.cell]
