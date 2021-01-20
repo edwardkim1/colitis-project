@@ -177,7 +177,11 @@ save_figures_CD <- function(dirname, date, dataset="martin", input.directory=NUL
 	}
 	s <- CreateSeuratObject(counts = temp, project = dirname, min.cells = 0, min.features = 0) %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt")
 	stats <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
-	s1 <- s[,stats$is.cell]
+	if (dataset=="martin") {
+		s1 <- s[,stats$is.cell]
+	} else {
+		s1 <- s
+	}
 	s1$cells.to.remove <- stats$cells.to.remove
 	s2 <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_2star.RDS", sep=""))
 	s3 <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_3.RDS", sep=""))
