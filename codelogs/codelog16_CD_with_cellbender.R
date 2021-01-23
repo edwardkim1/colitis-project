@@ -639,13 +639,13 @@ pred.Monaco <- SingleR(method="cluster",
 s$SingleR.Monaco <- s$seurat_clusters
 levels(s$SingleR.Monaco) <- pred.Monaco$labels
 
-
 require(ggpubr)
 p1 <- DimPlot(s, reduction = "umap", label=T, group.by="SingleR.Martin") + labs(title="Martin reference")
 p2 <- DimPlot(s, reduction = "umap", label=T, group.by="SingleR.Luoma") + labs(title="Luoma-Suo reference")
 p3 <- DimPlot(s, reduction = "umap", label=T, group.by="SingleR.Monaco") + labs(title="Monaco reference")
 ggarrange(p1,p2,p3, ncol=3, nrow=1)
 ggsave("figures/CD_martin_121320_integration/martin_naive_npc20_k120_singleR.pdf", width= 24, height= 6, units= "in")
+
 ######################################################
 # 3 - CD3E and CD4/CD8 and other QC metrics per cluster
 ######################################################
@@ -671,4 +671,63 @@ ggsave(paste("figures/CD_martin_121320_integration/martin_naive20120_VlnPlot_IGK
 
 # save RDS
 saveRDS(s, paste("saved_objects/CD_martin_qc_", date, "/martin_20120.rds", sep=""))
+
+
+####################################
+# 5 - Subset T cells
+####################################
+# violin plot of CD3E per cluster
+s1 <- s
+s <- subset(s1, idents=c("0","1","3","14","16"))
+s <- NormalizeData(s, normalization.method = "LogNormalize", scale.factor = 10000) %>% FindVariableFeatures(selection.method = "vst", nfeatures = 2000) 
+## Highly variable genes
+hvf <- VariableFeatures(s)
+'%ni%' = Negate('%in%')
+all.genes <- rownames(s)
+trvgenes <- all.genes[grepl(x=all.genes, pattern = "^TRAV|^TRBV|^TRGV|^TRDV")]
+igvgenes <- all.genes[grepl(x=all.genes, pattern = "^IG.V")]
+VariableFeatures(s) <- hvf[hvf %ni% c(trvgenes,igvgenes)]
+# Do the rest
+s <- ScaleData(s, features = all.genes, vars.to.regress=c("percent.mt")) %>% RunPCA(features=VariableFeatures(s))
+s <-  cluster_umap(s, npc=20, k.param=100, resolution=0.5, min.dist=0.3)
+DimPlot(s, label=T)
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_umap.pdf")
+
+######################################################
+# 3 - CD3E and CD4/CD8 and other QC metrics per cluster
+######################################################
+# distribution by sample
+data.frame(cluster = s$seurat_clusters, patient= s$sample.id) %>%
+        ggplot() + geom_bar(
+                mapping = aes(x= patient, fill= cluster),
+                position = "fill"
+        ) + labs(y="proportion")+ theme_classic() + coord_flip()
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_distpersample.pdf")
+# violin plot of CD3E per cluster
+p <- VlnPlot(s,features = "CD3E", pt.size= 0, group.by="seurat_clusters") + theme(axis.text.x = element_text(angle = 90),legend.position = "none", axis.title.x=element_blank())
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_VlnPlot_CD3E_by_cluster.pdf", width= 7, height= 7, units= "in")
+# feature plots the CD4 and CD8 split
+FeaturePlot(s, features= c('CD4','CD8A','CD8B','CD3E'), reduction="umap")
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_CD4xCD8_featureplot.pdf", width= 12, height= 12, units= "in")
+# violin plot of %mito per cluster
+p <- VlnPlot(s,features = "percent.mt", pt.size= 0, group.by="seurat_clusters") + theme(axis.text.x = element_text(angle = 90),legend.position = "none", axis.title.x=element_blank())
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_VlnPlot_percentmito_by_cluster.pdf", width= 7, height= 7, units= "in")
+# violin plot of nFeature per cluster
+p <- VlnPlot(s,features = "nFeature_RNA", pt.size= 0, group.by="seurat_clusters") + theme(axis.text.x = element_text(angle = 90),legend.position = "none", axis.title.x=element_blank())
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_VlnPlot_nFeatureRNA_by_cluster.pdf", width= 7, height= 7, units= "in")
+# feature plots the IGKC and JCHAIN
+FeaturePlot(s, features= c('IGKC','JCHAIN'), reduction="umap")
+ggsave("figures/CD_martin_121320_integration/martin_CD3_20100_IGKC-JCHAIN_featureplot.pdf", width= 12, height= 7, units= "in")
+
+# violin plot of IGKC per cluster
+p <- VlnPlot(s,features = "IGKC", pt.size= 0, group.by="seurat_clusters") + theme(axis.text.x = element_text(angle = 90),legend.position = "none", axis.title.x=element_blank())
+ggsave(paste("figures/CD_martin_121320_integration/martin_CD3_20100_VlnPlot_IGKC_by_cluster.pdf", sep=""), width= 7, height= 7, units= "in")
+# Correlation between IGKC expression and CD3E
+FeatureScatter(s,feature1="IGKC", feature2="CD3E")
+ggsave(paste("figures/CD_martin_121320_integration/martin_CD3_20100_Scatter_IGKC_CD3E.pdf", sep=""), width= 7, height= 7, units= "in")
+
+# save RDS
+saveRDS(s, paste("saved_objects/CD_martin_qc_", date, "/martin_20120_CD3_20120.rds", sep=""))
+
+
 

@@ -29,6 +29,15 @@ options(future.globals.maxSize = 20000 * 1024^2)
 source("scripts/Stat111functions.R")
 source("scripts/new_clustering_functions.R")
 
+
+############################## 
+# 2 - Remove cluster 8; negative filter of B cells
+##############################
+s.a <- readRDS("saved_objects/cdcpi3_anchor.rds")
+s.a$
+
+
+
 ############################################
 # 3 - DA CPI colitis vs CPI (no colitis and control)
 ############################################
@@ -525,6 +534,78 @@ data.frame(group = x1$colitis, cluster= x1$seurat_clusters) %>%
 		position = "fill"
 	) + labs(y="proportion")+ theme_classic()
 ggsave("figures/cdcpi3_compare/CD_inflamed_by_cluster.pdf", width= 10, height= 7, units= "in")
+
+#####################################################
+## (11/30/20) Removing B cells
+#####################################################
+s <- readRDS("saved_objects/CD_martin_qc_100720/martin_naive_CD3_15100.rds")
+date <- "113020"
+
+# figure showing which clusters have the B cells
+# violin plot of IGKC per cluster
+p <- VlnPlot(s,features = "IGKC", pt.size= 0, group.by="seurat_clusters") + theme(axis.text.x = element_text(angle = 90),legend.position = "none", axis.title.x=element_blank())
+ggsave(paste("figures/CD_martin_", date, "/martin_naive_CD3_15100_VlnPlot_IGKC_by_cluster.pdf", sep=""), width= 7, height= 7, units= "in")
+# violin plot of JCHAIN per cluster
+p <- VlnPlot(s,features = "JCHAIN", pt.size= 0, group.by="seurat_clusters") + theme(axis.text.x = element_text(angle = 90),legend.position = "none", axis.title.x=element_blank())
+ggsave(paste("figures/CD_martin_", date, "/martin_naive_CD3_15100_VlnPlot_JCHAIN_by_cluster.pdf", sep=""), width= 7, height= 7, units= "in")
+# feature plots the IGKC and JCHAIN split
+FeaturePlot(s, features= c('IGKC','JCHAIN'), reduction="umap")
+ggsave(paste("figures/CD_martin_", date, "/martin_naive_CD3_15100_Featureplot_IGKC_JCHAIN.pdf", sep=""), width= 14, height= 7, units= "in")
+# Correlation between IGKC expression and CD3E
+FeatureScatter(s,feature1="IGKC", feature2="CD3E")
+ggsave(paste("figures/CD_martin_", date, "/martin_naive_CD3_15100_Scatter_IGKC_CD3E.pdf", sep=""), width= 7, height= 7, units= "in")
+# feature plots the IGKC and JCHAIN split in cdcpi3 anchor
+FeaturePlot(s.a, features= c('rna_IGKC','rna_JCHAIN'), reduction="umap")
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3a_Featureplot_IGKC_JCHAIN.pdf", sep=""), width= 14, height= 7, units= "in")
+# Correlation between IGKC expression and CD3E in cdcpi3 anchor
+FeatureScatter(s.a,feature1="rna_IGKC", feature2="rna_CD3E", group.by="orig.ident")
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3a_Scatter_IGKC_CD3E.pdf", sep=""), width= 7, height= 7, units= "in")
+# Correlation between IGKC expression and JCHAIN in both
+FeatureScatter(s.a,feature1="rna_IGKC", feature2="rna_JCHAIN", group.by="orig.ident")
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3a_vs_CD_Scatter_IGKC_JCHAIN.pdf", sep=""), width= 7, height= 7, units= "in")
+# Select cells that are in the thresholds
+potential.Bcells <- WhichCells(s.a, expression=rna_IGKC > 1 | rna_JCHAIN > 1)
+#length(potential.Bcells)
+# length(potential.Bcells)/dim(s.a)[2]
+s.a$potential.Bcells <- colnames(s.a) %in% potential.Bcells
+FeatureScatter(s.a,feature1="rna_IGKC", feature2="rna_JCHAIN", group.by = "potential.Bcells", cols=c("green","grey"))
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3a_vs_CD_Scatter_IGKC_JCHAIN_highlightBcells.pdf", sep=""), width= 7, height= 7, units= "in")
+
+### Distributional stats of cells that are in the thresholds
+# distribution by sample
+data.frame(potential.Bcells = s.a$potential.Bcells, patient= s.a$sample.id) %>%
+	ggplot() + geom_bar(
+		mapping = aes(x= patient, fill= potential.Bcells),
+		position = "fill") + labs(y="proportion")+ theme_classic() + coord_flip() +
+	scale_fill_manual(values=c("grey","#F8766D"))
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3a_highlightBcells_per_patient.pdf", sep=""), width= 7, height= 7, units= "in")
+# distribution by condition
+data.frame(potential.Bcells = s.a$potential.Bcells, condition= s.a$colitis) %>%
+	ggplot() + geom_bar(
+		mapping = aes(x= condition, fill= potential.Bcells),
+		position = "fill"
+	) + labs(y="proportion")+ theme_classic() + scale_fill_manual(values=c("grey","#F8766D"))
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3a_highlightBcells_per_condition.pdf", sep=""), width= 7, height= 7, units= "in")
+
+# apply negative filter to remove potential B cells
+s.a <- s.a[,!s.a$potential.Bcells]
+# save as new object
+saveRDS(s.a, paste("saved_objects/CD_martin_qc_", date, "/cdcpi3a_Bminus.rds", sep=""))
+# total number of cells per patient
+# distribution by sample
+data.frame(patient= s.a$sample.id) %>%
+	ggplot() + geom_bar(mapping = aes(x= patient)) + labs(y="total no. of cells")+ theme_classic() + coord_flip()
+ggsave(paste("figures/CD_martin_", date, "/cdcpi3aB_totalcount_per_patient.pdf", sep=""), width= 7, height= 7, units= "in")
+
+
+
+
+
+
+
+
+#saveRDS(s, paste("saved_objects/CD_martin_qc_", date, "/martin_naive_CD3_15100.rds", sep=""))
+
 
 
 

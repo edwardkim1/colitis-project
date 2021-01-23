@@ -489,15 +489,6 @@ ggplot(df, aes(patient, no.of.cells, fill = sampletype)) +
 ggsave("figures/CD_martin_100720_integration/martin_naive_15100_counts_per_patient.pdf")
 
 
-#####################################################
-## (11/30/20) Removing B cells
-#####################################################
-s <- readRDS("saved_objects/CD_martin_qc_100720/martin_naive_CD3_15100.rds")
-
-
-
-
-
 
 
 
