@@ -95,11 +95,11 @@ qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL) {
 	if(dataset=="martin") {
 		e.out <- readRDS(paste("saved_objects/CD_martin_qc/",dirname,"_e_out.rds",sep=""))
 		stats <- filter_stats_CD(s, e.out= e.out, save=T, filename=paste("saved_objects/CD_martin_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+		# remove empty drops
+		s <- s[,stats$is.cell]
 	} else {
 		stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	}
-	# remove empty drops
-	s <- s[,stats$is.cell]
 	# remove low quality cells
 	s$cells.to.remove <- stats$cells.to.remove
 	s <- s[,!s$cells.to.remove]
@@ -186,28 +186,40 @@ save_figures_CD <- function(dirname, date, dataset="martin", input.directory=NUL
 	s2 <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_2star.RDS", sep=""))
 	s3 <- readRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_3.RDS", sep=""))
 	# Mito% Pre/Post Violin Plot
-	p <- ggplot(data=data.frame(x= c(rep("pre mito%", length(stats$mt.pre)),rep("post mito%", length(stats$mt.post))), percent.mito = c(stats$mt.pre,stats$mt.post))) + geom_violin(aes(x= x, y=percent.mito))
-	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_p101519_CD3_MITOviolin.pdf", sep=""))
+	df <- data.frame(x= c(rep("pre", length(stats$mt.pre)),rep("post", length(stats$mt.post))), percent.mito = c(stats$mt.pre,stats$mt.post))
+	df$x <- factor(df$x, levels=c("pre","post"))
+	p <- ggplot(data=df) + geom_violin(aes(x= x, y=percent.mito), fill="#56B4E9") +
+		 theme_classic() + theme(axis.title.x=element_blank()) +
+		 ylab("mitochondrial proportion (mtDNA%)") + 
+		 ggtitle("Distribution of mtDNA%")
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_p101519_CD3_MITOviolin.pdf", sep=""), width= 4, height= 4, units= "in")
 	# Log(No. of Features) Pre/Post Violin Plot
-	p <- ggplot(data=data.frame(x= c(rep("pre lnf", length(stats$lnf.pre)),rep("post lnf", length(stats$lnf.post))), log.num.feats = c(stats$lnf.pre,stats$lnf.post))) + geom_violin(aes(x= x, y=log.num.feats))
-	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNFviolin.pdf", sep=""))
+	df <- data.frame(x= c(rep("pre", length(stats$lnf.pre)),rep("post", length(stats$lnf.post))), log.num.feats = c(stats$lnf.pre,stats$lnf.post))
+	df$x <- factor(df$x, levels=c("pre","post"))
+	p <- ggplot(data= df) + geom_violin(aes(x= x, y=log.num.feats), fill="#E69F00") +
+		theme_classic() + theme(axis.title.x=element_blank()) +
+		ylab("log number of features (LNF)") + 
+		ggtitle("Distribution of LNF")
+	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNFviolin.pdf", sep=""), width= 4, height= 4, units= "in")
 
-	# Log.no.features vs. mito% Figure
-	p <- s1 %>% FeatureScatter(feature1="nFeature_RNA", feature2="percent.mt", group.by="cells.to.remove")
+	# Log.no.features vs. mtDNA% Figure
+	s1$cells.to.remove <- ifelse(s1$cells.to.remove, "Low Quality", "Keep")
+	p <- s1 %>% FeatureScatter(feature1="nFeature_RNA", feature2="percent.mt", group.by="cells.to.remove", cols=c("green","grey")) + ylab("mtDNA%")
 	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNFxMITO.pdf", sep=""))
 
 	# Mito% Model Fitting Figure
-	p <- plot_kde(stats$mt.pre, kernel = "gaussian", bw=0.5, lab.x = "mitochondrial gene percentage (per cell)", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$mt.median,stats$mt.mad)}, 
-	support=seq(0,100,0.1))
+	p <- plot_kde(stats$mt.pre, kernel = "gaussian", bw=0.5, lab.x = "mtDNA% per cell", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$mt.median,stats$mt.mad)}, support=seq(0,100,0.1))
 	p + geom_vline(xintercept= stats$mt.lim, color = "red") +
-	geom_vline(xintercept= stats$mt.median-3*stats$mt.mad, linetype = "dotted") + 
-	geom_vline(xintercept= stats$mt.median+3*stats$mt.mad, linetype = "dotted")
+	geom_vline(xintercept= max(0,stats$mt.median-3*stats$mt.mad), linetype = "dotted") + 
+	geom_vline(xintercept= min(100,stats$mt.median+3*stats$mt.mad), linetype = "dotted") + 
+		theme_classic()
 	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_MITO-KDE-Normal.pdf", sep=""))
 	# Log.no.features Model Fitting Figure
 	p <- plot_kde(stats$lnf.pre, kernel = "gaussian", bw=0.01, lab.x = "Log(No. of Features)", overlay = T, model="Norm", dmodel = function(x) {dnorm(x,stats$lnf.median,stats$lnf.mad)})
 	p + geom_vline(xintercept= stats$lnf.lim, color = "red") +
 	geom_vline(xintercept= stats$lnf.median-3*stats$lnf.mad, linetype = "dotted") +
-	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted")
+	geom_vline(xintercept= stats$lnf.median+3*stats$lnf.mad, linetype = "dotted") + 
+		theme_classic()
 	ggsave(paste("figures/CD_",dataset,"_", date, "/",dirname,"_LNF-KDE-Normal.pdf", sep=""))
 	# Variable Features Save & Figure
 	VariableFeatures(s3)%>%saveRDS(paste("saved_objects/CD_",dataset,"_qc_", date, "/",dirname,"_hvf.RDS", sep=""))
