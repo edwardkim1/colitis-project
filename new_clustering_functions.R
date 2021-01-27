@@ -83,7 +83,7 @@ filter_stats_CD_postcb <- function(seurat.object, save = FALSE, filename = "") {
 	return(filter.stats)
 }
 
-qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL) {
+qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL, custom.mt.lim = NULL, custom.lnf.lim = NULL) {
 	
 	if (is.null(input.directory)) {
 		temp <- Read10X(data.dir = paste("data/CD_",dataset,"/",dirname,sep=""))
@@ -98,7 +98,8 @@ qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL) {
 		# remove empty drops
 		s <- s[,stats$is.cell]
 	} else {
-		stats <- filter_stats(s, save=T, filename=paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
+		stats <- filter_stats(s, save=T, custom.lnf.lim = 6.7,
+			filename=paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	}
 	# remove low quality cells
 	s$cells.to.remove <- stats$cells.to.remove
@@ -323,17 +324,19 @@ get_info_CD_postcb <- function(dirname,date) {
 	return(x)
 }
 
-filter_stats <- function(seurat.object, save = FALSE, filename = "") {
+filter_stats <- function(seurat.object, save = FALSE, filename = "", custom.lnf.lim = NULL, custom.mt.lim = NULL) {
 	#thresholding number of unique features
 	lnf <- log(seurat.object$nFeature_RNA)
 	lnf.p = pnorm(lnf, mean = median(lnf), sd = mad(lnf), lower.tail = TRUE)
 	lnf.lim1 = max(lnf[which(p.adjust(lnf.p, method = "fdr") < 1e-2)])
 	lnf.lim = max(log(200),lnf.lim1)
+	lnf.lim = ifelse(is.null(custom.lnf.lim),lnf.lim, custom.lnf.lim)
 	#thresholding by mitochondrial fraction
 	mt.fraction <- seurat.object$percent.mt
 	mt.p = pnorm(mt.fraction, mean = median(mt.fraction), sd = mad(mt.fraction), lower.tail = FALSE)
 	mt.lim1 = min(mt.fraction[which(p.adjust(mt.p, method = "fdr") < 1e-2)])
 	mt.lim = min(20,mt.lim1)
+	mt.lim = ifelse(is.null(custom.mt.lim),mt.lim, custom.mt.lim)
 	# output
 	filter.stats = list(mt.pre = mt.fraction, mt.post = mt.fraction[which(mt.fraction < mt.lim)], lnf.pre = lnf, lnf.post = lnf[which(lnf > lnf.lim)], cells.to.remove= !(lnf > lnf.lim & mt.fraction < mt.lim), mt.remove = sum(!(mt.fraction < mt.lim)) , mt.median = median(mt.fraction), mt.mad =mad(mt.fraction), mt.lim = mt.lim, lnf.remove = sum(!(lnf > lnf.lim)) , lnf.median = median(lnf), lnf.mad =mad(lnf), lnf.lim = lnf.lim, total.remove = sum(!(lnf > lnf.lim & mt.fraction < mt.lim)))
 	if(save==TRUE) {
