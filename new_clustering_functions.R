@@ -98,7 +98,7 @@ qc_CD <- function(dirname, date, dataset="martin", input.directory = NULL, custo
 		# remove empty drops
 		s <- s[,stats$is.cell]
 	} else {
-		stats <- filter_stats(s, save=T, custom.lnf.lim = 6.7,
+		stats <- filter_stats(s, save=T, custom.lnf.lim = custom.lnf.lim, custom.mt.lim = custom.mt.lim,
 			filename=paste("saved_objects/CD_",dataset,"_qc_", date, "/", dirname, "_filterstats.RDS", sep=""))
 	}
 	# remove low quality cells
