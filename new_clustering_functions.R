@@ -638,7 +638,7 @@ DE_heatmap <- function(seurat.object, filename, n.cores=10) {
 	require(future)
 	plan(multicore, workers= n.cores)
 	s_regress.markers <- FindAllMarkers(seurat.object, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25, verbose=F)
-	top5 <- s_regress.markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
+	top5 <- s_regress.markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_log2FC)
 	# change spaces in cluster names to underscores
 	orig.levels <- levels(seurat.object)
 	Idents(seurat.object) <- gsub(pattern = " ", replacement = "_", x = Idents(seurat.object))
