@@ -22,6 +22,7 @@
 ## test_match_order #
 ## DE_heatmap
 ## DA_analysis
+## plot.propbar
 ##
 ## filter_stats_CD # has to be done before scaling/normalizing
 ## qc_CD # 
@@ -673,6 +674,16 @@ DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), 
 	dev.off()
 	# output
 	return(list(y.ab = y.ab, fit.ab = fit.ab,res = res))
+}
+
+plot.propbar <- function(group1, group2, factor.levels, group.names, filename) {
+	viz.data <- prop.table(table(c(group1,group2),c(rep(group.names[1], length(group1)),rep(group.names[2], length(group2)))), margin = 2)
+	df.prop <- data.frame(cluster= rep(rownames(viz.data),ncol(viz.data)), proportion= as.vector(viz.data), status= rep(colnames(viz.data), each=nrow(viz.data)))
+	df.prop$cluster <- factor(df.prop$cluster, levels = factor.levels)
+	p <- ggplot(df.prop, aes(x=cluster, y=proportion, fill=status)) + 
+		geom_bar(stat="identity", position=position_dodge()) +
+		labs(y = "Fraction of total cells") + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + theme_classic()
+		ggsave(, width= 7, height= 7, units= "in")
 }
 
 
