@@ -652,6 +652,9 @@ DE_heatmap <- function(seurat.object, filename, n.cores=10) {
 	ggsave(filename)
 }
 
+
+
+
 DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), title) {
 	require(edgeR)
 	abundances <- table(x$seurat_clusters, x$sample.id) %>% unclass()
@@ -685,6 +688,44 @@ plot.propbar <- function(group1, group2, factor.levels, group.names, filename) {
 		labs(y = "Fraction of total cells") + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) + theme_classic()
 		ggsave(, width= 7, height= 7, units= "in")
 }
+
+# need metadata columns: sample.id, seurat_clusters, colitis
+plot.propbar.errors <- function(seurat.object, clusters, group.names) {
+	# define key functions
+	wilcoxon.df <- function(seurat.object) {
+        # get the prop table of cluster by sample
+        proportions <- prop.table(table(seurat.object$seurat_clusters,seurat.object$sample.id), margin = 2)
+        # get the prop table of the cluster by type
+        status.table <- prop.table(table(seurat.object$sample.id,seurat.object$colitis),margin=1)
+        dad.table <- sapply(colnames(proportions),function(sample.name) colnames(status.table)[status.table[sample.name,]==1])
+        # prepare the prop dataframe
+        df.prop <- data.frame(cluster= rep(rownames(proportions),ncol(proportions)), proportion= as.vector(proportions), status= rep(dad.table, each=nrow(proportions)))
+        return(df.prop)
+	}
+	data_summary <- function(data, varname, groupnames){
+	  require(plyr)
+	  summary_func <- function(x, col){
+	    c(mean = mean(x[[col]], na.rm=TRUE),
+	      sd = sd(x[[col]], na.rm=TRUE), sem = sd(x[[col]], na.rm=TRUE)/sqrt(length(x[[col]])))
+	  }
+	  data_sum<-ddply(data, groupnames, .fun=summary_func, varname)
+	  data_sum <- rename(data_sum, c("mean" = varname))
+	 return(data_sum)
+	}
+
+	# calling the functions on the data
+	df.s <- wilcoxon.df(seurat.object)
+	df.summary <- data_summary(df.s, varname="proportion", groupnames=c("cluster", "status"))
+	df.summary$cluster <- factor(df.summary$cluster, levels=clusters)
+	df.summary$status <- factor(df.summary$status, levels=group.names)
+
+	p <- ggplot(df.summary, aes(x=cluster, y=proportion, fill=status)) + 
+	        geom_bar(stat="identity", position=position_dodge()) +
+	        geom_errorbar(aes(ymin=proportion-sem, ymax=proportion+sem), width=.2, position=position_dodge(.9)) +
+	        labs(y = "Fraction of total cells") + scale_fill_brewer(palette="Paired") + theme_classic()
+	return(p)
+}
+
 
 
 # Use when not a square matrix
