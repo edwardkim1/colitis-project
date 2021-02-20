@@ -634,7 +634,7 @@ test_match_order <- function(x,y) {
 	if(!isTRUE(all.equal(x,y)) && !isTRUE(all.equal(sort(x),sort(y)))) print('No match')
 }
 
-DE_heatmap <- function(seurat.object, filename, n.cores=10) {
+DE_heatmap <- function(seurat.object, n.cores=10) {
 	require(Seurat)
 	require(future)
 	plan(multicore, workers= n.cores)
@@ -649,15 +649,47 @@ DE_heatmap <- function(seurat.object, filename, n.cores=10) {
 	cluster.averages <- AverageExpression(seurat.object, return.seurat = TRUE)
 	# visualize
 	p <- DoHeatmap(cluster.averages,features = top5$gene, size = 3, draw.lines = FALSE, raster=F)
-	ggsave(filename)
+	return(list(plot=p,markers=s_regress.markers))
+}
+
+DE_volcano <- function(seurat.object, ident.1, group.by,subset.ident, FCcutoff = 0.8,drawConnectors=T, title, xlim,legendPosition = "top") {
+        require(EnhancedVolcano)
+        s.markers <- FindMarkers(seurat.object, ident.1 =ident.1 ,group.by=group.by, subset.ident= subset.ident, min.pct = 0.25, logfc.threshold = 0.01, verbose=F)
+        head(s.markers, n=20) %>% rownames() -> labels
+        up.labels <- rownames(s.markers[s.markers$avg_log2FC > FCcutoff,])
+        down.labels <- rownames(s.markers[s.markers$avg_log2FC < -FCcutoff,])
+        labels <- unique(c(up.labels,down.labels))
+        p <- EnhancedVolcano(s.markers,
+            lab = rownames(s.markers),
+            x = 'avg_log2FC',
+            y = 'p_val_adj',
+            xlim = xlim,
+            title = title,
+            pCutoff = 0.05,
+            FCcutoff = FCcutoff,
+            pointSize = 3.0,
+            labSize = 4.0,
+            selectLab = labels,
+            drawConnectors = drawConnectors,
+            widthConnectors = 0.2,
+            colConnectors = 'grey30',
+            border="full",
+            borderWidth = 1.0,
+            borderColour = 'black',
+            colAlpha = 1,
+            gridlines.major = FALSE,
+            gridlines.minor= FALSE,
+            legendPosition = legendPosition)
+        return(list(markers = s.markers, plot=p))
 }
 
 
-
-
-DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), title) {
+DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), title, annotations = NULL) {
 	require(edgeR)
-	abundances <- table(x$seurat_clusters, x$sample.id) %>% unclass()
+	if (is.null(annotations)) {
+		annotations <- x$seurat_clusters
+	}
+	abundances <- table(annotations, x$sample.id) %>% unclass()
 	extra.info <- x@meta.data[match(colnames(abundances),x$sample.id),]
 	y.ab <- DGEList(abundances,samples=extra.info)
 	# filter just for procedural reasons; no clusters should actually be removed
@@ -689,20 +721,20 @@ plot.propbar <- function(group1, group2, factor.levels, group.names, filename) {
 		ggsave(, width= 7, height= 7, units= "in")
 }
 
+# the following functions are needed for plot.propbar.errors
 # need metadata columns: sample.id, seurat_clusters, colitis
-plot.propbar.errors <- function(seurat.object, clusters, group.names) {
-	# define key functions
-	wilcoxon.df <- function(seurat.object) {
+wilcoxon.df <- function(annotations, sample.id, conditions) {
         # get the prop table of cluster by sample
-        proportions <- prop.table(table(seurat.object$seurat_clusters,seurat.object$sample.id), margin = 2)
+        proportions <- prop.table(table(annotations,sample.id), margin = 2)
         # get the prop table of the cluster by type
-        status.table <- prop.table(table(seurat.object$sample.id,seurat.object$colitis),margin=1)
+        status.table <- prop.table(table(sample.id,conditions),margin=1)
         dad.table <- sapply(colnames(proportions),function(sample.name) colnames(status.table)[status.table[sample.name,]==1])
         # prepare the prop dataframe
         df.prop <- data.frame(cluster= rep(rownames(proportions),ncol(proportions)), proportion= as.vector(proportions), status= rep(dad.table, each=nrow(proportions)))
         return(df.prop)
-	}
-	data_summary <- function(data, varname, groupnames){
+}
+
+data_summary <- function(data, varname, groupnames){
 	  require(plyr)
 	  summary_func <- function(x, col){
 	    c(mean = mean(x[[col]], na.rm=TRUE),
@@ -713,8 +745,10 @@ plot.propbar.errors <- function(seurat.object, clusters, group.names) {
 	 return(data_sum)
 	}
 
+# need metadata columns: sample.id, seurat_clusters, colitis
+plot.propbar.errors <- function(annotations, sample.id, conditions, clusters, group.names) {
 	# calling the functions on the data
-	df.s <- wilcoxon.df(seurat.object)
+	df.s <- wilcoxon.df(annotations, sample.id, conditions)
 	df.summary <- data_summary(df.s, varname="proportion", groupnames=c("cluster", "status"))
 	df.summary$cluster <- factor(df.summary$cluster, levels=clusters)
 	df.summary$status <- factor(df.summary$status, levels=group.names)
