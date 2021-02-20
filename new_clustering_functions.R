@@ -827,7 +827,7 @@ eval_metric2 <- function(a,b,pre.ttn,post.ttn) {
 	return(answer)
 }
 
-get_fgsea <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
+get_fgseaRes <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
         require(fgsea)
         require(data.table)
         require(ggplot2)
