@@ -827,6 +827,36 @@ eval_metric2 <- function(a,b,pre.ttn,post.ttn) {
 	return(answer)
 }
 
+get_fgsea <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
+        # prepration of genesets for fgsea
+        pathways <- as.list(table(msigdbr.gs$gs_name)) 
+        genesets <- rownames(table(msigdbr.gs$gs_name))
+        for(i in 1:length(genesets)) {
+                pathways[[i]] <- msigdbr.gs[msigdbr.gs$gs_name == genesets[i],]$entrez_gene
+        }
+        # preparation of ranks list from Seurat markers
+        ranks <- seurat4.markers %>% 
+                subset(p_val_adj < 0.01) %>% 
+                subset(avg_log2FC > .8 | avg_log2FC < -.8) %>% 
+                subset(pct.1 > 0) %>%
+                subset(pct.2 > 0) 
+        ranks$name <- rownames(ranks)
+        ranks <- ranks %>% arrange(avg_log2FC)
+        generanks <- ranks$avg_log2FC
+        entrez.keys <- mapIds(org.Hs.eg.db, ranks$name, "ENTREZID", "SYMBOL")
+        generanks <- generanks[!is.na(entrez.keys)]
+        names(generanks) <- entrez.keys[!is.na(entrez.keys)]
+        # running fgsea
+        set.seed(seed)
+        fgseaRes <- fgsea(pathways = pathways, 
+                          stats    = generanks,
+                          eps = 0,
+                          minSize  = 15,
+                          maxSize  = 500)
+        fgseaRes
+}
+
+
 ## Function from: https://bioinformaticsbreakdown.com/how-to-gsea/
 GSEA <- function(gene_list, GO_file, pval) {
   set.seed(54321)
@@ -896,7 +926,6 @@ GSEA <- function(gene_list, GO_file, pval) {
   output = list("Results" = fgRes, "Plot" = g)
   return(output)
 }
-
 
 # required fast match operator function for collapsePathways.fixed
 `%fin%` <- function(x, table) {
