@@ -857,7 +857,7 @@ get_fgseaRes <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
                           eps = 0,
                           minSize  = 15,
                           maxSize  = 500)
-        fgseaRes
+        list(result = fgseaRes, ranks = generanks, pathways = pathways)
 }
 
 
