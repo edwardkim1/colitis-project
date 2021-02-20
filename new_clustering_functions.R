@@ -831,6 +831,7 @@ get_fgsea <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
         require(fgsea)
         require(data.table)
         require(ggplot2)
+        require('org.Hs.eg.db')
         # prepration of genesets for fgsea
         pathways <- as.list(table(msigdbr.gs$gs_name)) 
         genesets <- rownames(table(msigdbr.gs$gs_name))
