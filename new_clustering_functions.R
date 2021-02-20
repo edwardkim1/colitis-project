@@ -652,9 +652,9 @@ DE_heatmap <- function(seurat.object, n.cores=10) {
 	return(list(plot=p,markers=s_regress.markers))
 }
 
-DE_volcano <- function(seurat.object, ident.1, group.by,subset.ident, FCcutoff = 0.8,drawConnectors=T, title, xlim,legendPosition = "top") {
+DE_volcano <- function(seurat.object, assay, ident.1, group.by,subset.ident, FCcutoff = 0.8,drawConnectors=T, title, xlim,legendPosition = "top") {
         require(EnhancedVolcano)
-        s.markers <- FindMarkers(seurat.object, ident.1 =ident.1 ,group.by=group.by, subset.ident= subset.ident, min.pct = 0.25, logfc.threshold = 0.01, verbose=F)
+        s.markers <- FindMarkers(seurat.object, ident.1 =ident.1 ,assay = assay,group.by=group.by, subset.ident= subset.ident, min.pct = 0.25, logfc.threshold = 0.01, verbose=F)
         head(s.markers, n=20) %>% rownames() -> labels
         up.labels <- rownames(s.markers[s.markers$avg_log2FC > FCcutoff,])
         down.labels <- rownames(s.markers[s.markers$avg_log2FC < -FCcutoff,])
