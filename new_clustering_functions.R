@@ -683,6 +683,91 @@ DE_volcano <- function(seurat.object, assay, ident.1, group.by,subset.ident, FCc
         return(list(markers = s.markers, plot=p))
 }
 
+# key function for dream
+exec_dream <- function(s2, celltype) {
+	# subset cells of that celltype
+	s3 <- s2[,s2$SingleR.Luoma2==celltype]
+	# make metadata table
+	metadata <- data.frame(Individual = s3$patient.id, Disease= s3$colitis3)
+	# remove genes that are expressed in less than 5% of cells
+	x <- s3[["RNA"]]@counts
+	nnz_row <- tabulate(x@i + 1)
+	keep <- rownames(x)[nnz_row> ncol(x)*0.05 ]
+	print(paste("Keeping",length(keep),"number of features for analysis."))
+	# exactly
+	geneExpr = DGEList( x[keep,] )
+	geneExpr = calcNormFactors( geneExpr )
+	# Specify parallel processing parameters
+	# this is used implicitly by dream() to run in parallel
+	param = SnowParam(20, "SOCK", progressbar=TRUE)
+	register(param)
+	# The variable to be tested must be a fixed effect
+	form <- ~ Disease + (1|Individual) 
+	# estimate weights using linear mixed model of dream
+	vobjDream = voomWithDreamWeights( geneExpr, form, metadata )
+	# Fit the dream model on each gene
+	# By default, uses the Satterthwaite approximation for the hypothesis test
+	fitmm = dream( vobjDream, form, metadata )
+	return(fitmm)
+}
+
+# wrapper function for executing the whole process
+key.colitis.colors = c("#a3d2ca", "#ffcda3", "#5eaaa8","#056676","#db6400")
+get_DEG_dream <- function(s, celltype) {
+	# subset condition groups
+	s2 <- s[,s$colitis3=="UC" | s$colitis3=="CPI-Colitis"]
+	# execute dream for condition groups
+	fitmm <- exec_dream(s2,celltype)
+	s.markers <- topTable( fitmm, coef='DiseaseUC', number=10000)
+	# filter regular with IG*V and TR*V genes
+	deg <- rownames(s.markers)
+	trvgenes <- deg[grepl(x=deg, pattern = "^TRAV|^TRBV|^TRGV|^TRDV")]
+	igvgenes <- deg[grepl(x=deg, pattern = "^IG.V")]
+	s.markers <- s.markers[deg %ni% c(trvgenes,igvgenes),]
+	# Repeat with controls 
+	s4 <- s[,s$colitis3=="UC-Control" | s$colitis3=="CPI-Control"]
+	fitmm.control <- exec_dream(s4,celltype)
+	s.markers.c <- topTable( fitmm.control, coef='DiseaseUC-Control', number=10000)
+	# get significant markers for removal
+	markers.up.c <- s.markers.c %>% 
+	                   subset(logFC > 1 & adj.P.Val < 0.05) %>%
+	                   arrange(desc(logFC)) %>%
+	                   arrange(P.Value) %>%
+	                   arrange(adj.P.Val) %>% 
+	                   rownames()
+	markers.down.c <- s.markers.c %>% 
+	                   subset(logFC < -1 & adj.P.Val < 0.05) %>%
+	                   arrange(logFC) %>%
+	                   arrange(P.Value) %>%
+	                   arrange(adj.P.Val) %>% 
+	                   rownames()
+	# filter regular with control DE
+	markers.up <- s.markers %>% subset(logFC > 1 & adj.P.Val < 0.05)
+	markers.up <- markers.up[rownames(markers.up) %ni% markers.up.c,] %>%
+	                   arrange(desc(logFC)) %>%
+	                   arrange(P.Value) %>%
+	                   arrange(adj.P.Val) %>%
+	                   head(20) %>%
+	                   rownames()
+	markers.down <- s.markers %>% subset(logFC < -1 & adj.P.Val < 0.05)
+	markers.down <- markers.down[rownames(markers.down) %ni% markers.down.c,] %>%
+	                   arrange(logFC) %>%
+	                   arrange(P.Value) %>%
+	                   arrange(adj.P.Val) %>%
+	                   head(20) %>%
+	                   rownames()
+	top.markers.filtered <- c(markers.up, rev(markers.down))
+	# store cluster averages in a Seurat object
+	s5 <- s[,s$SingleR.Luoma2==celltype]
+	Idents(s5) <- s5$colitis3
+	DefaultAssay(s5) <- "RNA"
+	cluster.averages <- AverageExpression(s5, return.seurat = TRUE)
+	# visualize
+	p <- DoHeatmap(cluster.averages,features = c(top.markers.filtered), size = 2, draw.lines = FALSE, raster=F, group.colors= key.colitis.colors)
+	# return plot and all markers identified by dream
+	return(list(plot=p, key.markers= fitmm, control.markers=fitmm.control))
+}
+
 
 DA_analysis <- function(x, des = function(y) model.matrix(~factor(colitis2),y), title, annotations = NULL) {
 	require(edgeR)
@@ -743,7 +828,7 @@ data_summary <- function(data, varname, groupnames){
 	  data_sum<-ddply(data, groupnames, .fun=summary_func, varname)
 	  data_sum <- rename(data_sum, c("mean" = varname))
 	 return(data_sum)
-	}
+}
 
 # need metadata columns: sample.id, seurat_clusters, colitis
 plot.propbar.errors <- function(annotations, sample.id, conditions, clusters, group.names) {
@@ -827,6 +912,10 @@ eval_metric2 <- function(a,b,pre.ttn,post.ttn) {
 	return(answer)
 }
 
+
+
+
+
 get_fgseaRes <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
         require(fgsea)
         require(data.table)
@@ -841,7 +930,7 @@ get_fgseaRes <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
         # preparation of ranks list from Seurat markers
         ranks <- seurat4.markers %>% 
                 subset(p_val_adj < 0.01) %>% 
-                subset(avg_log2FC > .8 | avg_log2FC < -.8) %>% 
+                #subset(avg_log2FC > .8 | avg_log2FC < -.8) %>% 
                 subset(pct.1 > 0) %>%
                 subset(pct.2 > 0) 
         ranks$name <- rownames(ranks)
@@ -860,6 +949,29 @@ get_fgseaRes <- function(msigdbr.gs, seurat4.markers, seed = 12345) {
         list(result = fgseaRes, ranks = generanks, pathways = pathways)
 }
 
+# following function was gratiously provided by Shengbao Suo
+ActivityScore <- function(SeuratObject,GeneSet,nCores=2) {
+	# parameter:
+	# SeuratObject: Seurat object.
+	# GeneSet: should only contain one gene set and the class of this variable should be a list), the following is an example, this gene set contain 10 genes and the name of this gene set is geneSet1:
+	# $geneSet1
+	# [1] "Gene13" "Gene18" "Gene3" "Gene19" "Gene1" "Gene11" "Gene8" "Gene10"
+	# [9] "Gene9" "Gene20"
+	# nCores: how many core would be used, default is 2
+
+	# This function returns a Seurat object, and the activity score of query geneset has been included in the meta.data of this Seurat object.
+	require(AUCell)
+	require(Seurat)
+	data <- GetAssayData(object = SeuratObject, slot = "data")
+	meta.data <- SeuratObject@meta.data
+	data <- data[,rownames(meta.data)]
+	aucellRankings1 <- AUCell_buildRankings(data, nCores=nCores, plotStats=FALSE)
+	regulonAUC1 <- AUCell_calcAUC(GeneSet, aucellRankings1, nCores=nCores, aucMaxRank = ceiling(0.05 * nrow(aucellRankings1)))
+	regulonMatix <- getAUC(regulonAUC1)
+	meta.data$activity <- as.numeric(regulonMatix[names(GeneSet),])
+	SeuratObject@meta.data <- meta.data
+	return(SeuratObject)
+}
 
 ## Function from: https://bioinformaticsbreakdown.com/how-to-gsea/
 GSEA <- function(gene_list, GO_file, pval) {
